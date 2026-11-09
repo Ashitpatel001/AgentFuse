@@ -31,20 +31,27 @@ class StuckLoopDetector(BaseDetector):
             
         target_signature = (event.tool, event.arguments_hash, event.response_hash)
         
-        # Postgres-backed state: fetch the last N-1 tool call completions for this run
+        # Fetch the most recent prior TOOL_CALL_COMPLETED events for this run.
+        # The current event is excluded by id: the collector persists the event
+        # BEFORE calling evaluate(), so without this exclusion the current event
+        # is counted twice (once as the baseline below, once from this query),
+        # which trips the detector one repetition early and over-reports the
+        # count — a false positive that breaks the "deterministic, zero false
+        # positive" guarantee.
         from cortexheal.storage.postgres import get_connection
         from psycopg2.extras import RealDictCursor
-        
+
         with get_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     "SELECT tool, arguments_hash, response_hash FROM events "
-                    "WHERE run_id = %s AND event_type = %s "
+                    "WHERE run_id = %s AND event_type = %s AND event_id != %s "
                     "ORDER BY sequence_number DESC LIMIT %s",
-                    (event.run_id, 'TOOL_CALL_COMPLETED', self.config.repetition_threshold - 1)
+                    (event.run_id, 'TOOL_CALL_COMPLETED', event.event_id,
+                     self.config.repetition_threshold - 1)
                 )
                 rows = cur.fetchall()
-                
+
         consecutive_count = 1
         for row in rows:
             if (row["tool"], row["arguments_hash"], row["response_hash"]) == target_signature:

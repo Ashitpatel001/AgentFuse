@@ -1,34 +1,44 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, CheckCircle2, XCircle, AlertTriangle, PlayCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, AlertTriangle, Zap, ExternalLink } from "lucide-react";
 import type { Incident } from "../types";
 import { api } from "../api";
-import { Badge, LoadingState, ErrorState } from "./ui";
+import { Badge, Button } from "./ui";
 import { relativeTime, cn } from "../utils";
 import { useRole } from "../hooks/useRole";
 
 function SeverityBadge({ severity }: { severity: string }) {
-  if (severity === "CRITICAL" || severity === "HIGH") return <Badge variant="red">{severity}</Badge>;
+  if (severity === "CRITICAL") return <Badge variant="red" dot>{severity}</Badge>;
+  if (severity === "HIGH") return <Badge variant="red">{severity}</Badge>;
   if (severity === "MEDIUM") return <Badge variant="amber">{severity}</Badge>;
-  if (severity === "LOW") return <Badge variant="neutral">{severity}</Badge>;
   return <Badge>{severity}</Badge>;
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === "OPEN") return <Badge variant="amber">{status}</Badge>;
+  if (status === "OPEN") return <Badge variant="amber" dot>{status}</Badge>;
   if (status === "RESOLVED") return <Badge variant="green">{status}</Badge>;
   return <Badge>{status}</Badge>;
 }
 
 function RunStatusBadge({ status }: { status: string }) {
-  if (status === "paused") return <Badge variant="amber">PAUSED</Badge>;
-  if (status === "running") return <Badge variant="green">RUNNING</Badge>;
-  if (status === "pause_requested") return <Badge variant="amber">PAUSING</Badge>;
-  if (status === "resume_requested") return <Badge variant="accent">RESUMING</Badge>;
-  if (status === "completed") return <Badge variant="neutral">COMPLETED</Badge>;
-  if (status === "failed") return <Badge variant="red">FAILED</Badge>;
-  return <Badge>{status}</Badge>;
+  const map: Record<string, { variant: "amber" | "green" | "accent" | "neutral" | "red"; label: string }> = {
+    paused: { variant: "amber", label: "PAUSED" },
+    running: { variant: "green", label: "RUNNING" },
+    pause_requested: { variant: "amber", label: "PAUSING" },
+    resume_requested: { variant: "accent", label: "RESUMING" },
+    completed: { variant: "neutral", label: "COMPLETED" },
+    failed: { variant: "red", label: "FAILED" },
+  };
+  const entry = map[status] || { variant: "neutral" as const, label: status };
+  return <Badge variant={entry.variant}>{entry.label}</Badge>;
+}
+
+function severityClass(severity: string) {
+  if (severity === "CRITICAL") return "severity-critical";
+  if (severity === "HIGH") return "severity-high";
+  if (severity === "MEDIUM") return "severity-medium";
+  return "severity-low";
 }
 
 export function IncidentRow({ incident }: { incident: Incident }) {
@@ -40,7 +50,7 @@ export function IncidentRow({ incident }: { incident: Incident }) {
     queryKey: ["plan", incident.incident_id],
     queryFn: () => api.getPlan(incident.incident_id),
     enabled: expanded,
-    retry: false
+    retry: false,
   });
 
   const approveMutation = useMutation({
@@ -49,7 +59,7 @@ export function IncidentRow({ incident }: { incident: Incident }) {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["plan", incident.incident_id] });
     },
-    onError: handleApiError
+    onError: handleApiError,
   });
 
   const rejectMutation = useMutation({
@@ -58,7 +68,7 @@ export function IncidentRow({ incident }: { incident: Incident }) {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["plan", incident.incident_id] });
     },
-    onError: handleApiError
+    onError: handleApiError,
   });
 
   const resumeMutation = useMutation({
@@ -66,101 +76,127 @@ export function IncidentRow({ incident }: { incident: Incident }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
     },
-    onError: handleApiError
+    onError: handleApiError,
   });
 
-  const isViewer = role === 'VIEWER';
-  const disableActions = isViewer || approveMutation.isPending || rejectMutation.isPending || resumeMutation.isPending;
+  const isViewer = role === "VIEWER";
+  const disableActions =
+    isViewer || approveMutation.isPending || rejectMutation.isPending || resumeMutation.isPending;
 
   return (
-    <div className="border border-border bg-surface hover:border-slate-600 transition-colors">
-      <div 
-        className="flex items-center p-4 cursor-pointer gap-4"
+    <div
+      className={cn(
+        "bg-bg-raised border rounded-xl transition-all duration-150",
+        severityClass(incident.severity),
+        expanded ? "border-border-strong ring-1 ring-white/[0.03]" : "border-border-subtle hover:border-border-default"
+      )}
+    >
+      {/* Row header */}
+      <div
+        className="flex items-center p-4 cursor-pointer gap-3"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="text-slate-400">
-          {expanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+        <div className="text-text-muted">
+          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </div>
-        
-        <div className="flex-1 grid grid-cols-12 gap-4 items-center">
-          <div className="col-span-3 flex flex-col gap-1">
-            <span className="text-sm font-semibold text-slate-200">{incident.failure_type}</span>
-            <div className="flex gap-2">
+
+        <div className="flex-1 grid grid-cols-12 gap-3 items-center">
+          <div className="col-span-3 flex flex-col gap-1.5">
+            <span className="text-[13px] font-semibold text-text-primary">{incident.failure_type}</span>
+            <div className="flex gap-1.5">
               <SeverityBadge severity={incident.severity} />
               <StatusBadge status={incident.status} />
             </div>
           </div>
-          
+
           <div className="col-span-5 flex flex-col gap-1">
-            <span className="text-sm text-slate-300 truncate" title={incident.description}>
+            <span className="text-[13px] text-text-secondary truncate" title={incident.description}>
               {incident.description}
             </span>
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
-              <Link 
+            <div className="flex items-center gap-2 text-[11px] font-mono text-text-muted">
+              <Link
                 to={`/runs/${incident.run_id}`}
-                className="hover:text-accent hover:underline"
-                onClick={e => e.stopPropagation()}
+                className="hover:text-accent transition-colors"
+                onClick={(e) => e.stopPropagation()}
                 title={incident.run_id}
               >
-                run:{incident.run_id.substring(0,8)}
+                {incident.run_id}
               </Link>
-              <span>&bull;</span>
+              <span className="text-text-muted/30">|</span>
               <span title={incident.triggered_at}>{relativeTime(incident.triggered_at)}</span>
             </div>
           </div>
-          
+
           <div className="col-span-2 flex items-center">
             <RunStatusBadge status={incident.run_status} />
           </div>
 
           <div className="col-span-2 flex justify-end">
-            <Link 
+            <Link
               to={`/incidents/${incident.incident_id}`}
-              className="text-sm text-accent hover:underline"
-              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-accent font-medium transition-colors"
+              onClick={(e) => e.stopPropagation()}
             >
-              Details &rarr;
+              Details
+              <ExternalLink className="w-3 h-3" />
             </Link>
           </div>
         </div>
       </div>
 
+      {/* Expanded detail */}
       {expanded && (
-        <div className="border-t border-border p-6 bg-background/50 grid grid-cols-2 gap-8">
+        <div className="border-t border-border-subtle p-5 grid grid-cols-2 gap-6 animate-slide-down">
+          {/* Evidence */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" /> Evidence
+            <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted mb-3 flex items-center gap-1.5">
+              <AlertTriangle className="w-3 h-3" /> Detection Evidence
             </h4>
-            <div className="bg-surface border border-border p-3 space-y-2">
+            <div className="bg-bg-base rounded-xl border border-border-subtle p-3 space-y-2">
               {Object.entries(incident.evidence || {}).map(([key, value]) => (
-                <div key={key} className="flex flex-col border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                  <span className="text-xs text-slate-500">{key}</span>
-                  <span className="text-sm font-mono text-slate-300 break-all">{String(value)}</span>
+                <div key={key} className="flex flex-col border-b border-border-subtle/50 pb-2 last:border-0 last:pb-0">
+                  <span className="text-[9px] uppercase tracking-wider text-text-muted font-semibold">{key}</span>
+                  <span className="text-[12px] font-mono text-text-secondary break-all">{String(value)}</span>
                 </div>
               ))}
             </div>
             {(incident.observed_value !== undefined || incident.threshold !== undefined) && (
-              <div className="mt-3 flex gap-4 text-sm font-mono">
-                {incident.observed_value !== undefined && <div>Observed: <span className="text-slate-200">{incident.observed_value}</span></div>}
-                {incident.threshold !== undefined && <div>Threshold: <span className="text-slate-200">{incident.threshold}</span></div>}
+              <div className="mt-3 flex gap-6 text-[13px] font-mono">
+                {incident.observed_value !== undefined && (
+                  <div>
+                    <span className="text-text-muted text-[10px] uppercase tracking-wider">Observed </span>
+                    <span className="text-red-400 font-semibold">{incident.observed_value}</span>
+                  </div>
+                )}
+                {incident.threshold !== undefined && (
+                  <div>
+                    <span className="text-text-muted text-[10px] uppercase tracking-wider">Threshold </span>
+                    <span className="text-text-secondary">{incident.threshold}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
+          {/* Recovery Plan */}
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" /> Recovery Plan
+            <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted mb-3 flex items-center gap-1.5">
+              <Zap className="w-3 h-3" /> Recovery Plan
             </h4>
-            
+
             {planLoading ? (
-              <LoadingState message="Generating plan..." />
+              <div className="space-y-2">
+                <div className="skeleton h-4 w-full rounded" />
+                <div className="skeleton h-4 w-3/4 rounded" />
+                <div className="skeleton h-8 w-32 mt-4 rounded-lg" />
+              </div>
             ) : planError ? (
-              <ErrorState title="Failed to load plan" error={planError} />
+              <p className="text-[12px] text-text-muted italic">No plan available for this incident.</p>
             ) : plan ? (
-              <div className="space-y-4">
-                <div className="bg-surface border border-border p-3">
-                  <div className="text-sm text-slate-300 mb-2">{plan.diagnosis}</div>
-                  <div className="flex gap-2">
+              <div className="space-y-3">
+                <div className="bg-bg-base rounded-xl border border-border-subtle p-3">
+                  <p className="text-[13px] text-text-secondary mb-2.5 leading-relaxed">{plan.diagnosis}</p>
+                  <div className="flex gap-1.5">
                     <Badge variant={plan.risk_level === "HIGH" ? "red" : plan.risk_level === "MEDIUM" ? "amber" : "neutral"}>
                       Risk: {plan.risk_level}
                     </Badge>
@@ -171,55 +207,45 @@ export function IncidentRow({ incident }: { incident: Incident }) {
                 </div>
 
                 {plan.status === "PROPOSED" && incident.status === "OPEN" && (
-                  <div className="flex gap-3 pt-2" title={isViewer ? "Requires OPERATOR or ADMIN role" : ""}>
-                    <button
+                  <div className="flex gap-2 pt-1" title={isViewer ? "Requires OPERATOR or ADMIN role" : ""}>
+                    <Button
+                      variant="primary"
+                      size="sm"
                       disabled={disableActions}
+                      loading={approveMutation.isPending}
                       onClick={() => approveMutation.mutate()}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2 font-medium transition-colors",
-                        "bg-accent text-white hover:bg-blue-600",
-                        disableActions && "opacity-50 cursor-not-allowed"
-                      )}
                     >
-                      {approveMutation.isPending && <PlayCircle className="w-4 h-4 animate-spin" />}
                       Approve Plan
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       disabled={disableActions}
+                      loading={rejectMutation.isPending}
                       onClick={() => rejectMutation.mutate()}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2 font-medium transition-colors",
-                        "border border-border text-slate-300 hover:bg-border/50",
-                        disableActions && "opacity-50 cursor-not-allowed"
-                      )}
                     >
-                      {rejectMutation.isPending && <XCircle className="w-4 h-4 animate-spin" />}
                       Reject
-                    </button>
-                  </div>
-                )}
-                
-                {incident.run_status === "paused" && (incident.status === "RESOLVED" || plan.status === "COMPLETED" || plan.status === "APPROVED") && (
-                  <div className="flex gap-3 pt-2" title={isViewer ? "Requires OPERATOR or ADMIN role" : ""}>
-                    <button
-                      disabled={disableActions}
-                      onClick={() => resumeMutation.mutate()}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2 font-medium transition-colors",
-                        "bg-accent text-white hover:bg-blue-600",
-                        disableActions && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      {resumeMutation.isPending && <PlayCircle className="w-4 h-4 animate-spin" />}
-                      Resume Run
-                    </button>
+                    </Button>
                   </div>
                 )}
 
+                {incident.run_status === "paused" &&
+                  (incident.status === "RESOLVED" || plan.status === "COMPLETED" || plan.status === "APPROVED") && (
+                    <div className="flex gap-2 pt-1" title={isViewer ? "Requires OPERATOR or ADMIN role" : ""}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={disableActions}
+                        loading={resumeMutation.isPending}
+                        onClick={() => resumeMutation.mutate()}
+                      >
+                        Resume Run
+                      </Button>
+                    </div>
+                  )}
+
                 {!!(approveMutation.error || rejectMutation.error || resumeMutation.error) && (
-                  <div className="text-sm font-mono text-status-red mt-2">
-                    Action failed. See console for details.
-                  </div>
+                  <p className="text-[11px] font-mono text-red-400 mt-1">Action failed.</p>
                 )}
               </div>
             ) : null}

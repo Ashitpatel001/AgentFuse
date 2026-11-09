@@ -3,10 +3,24 @@ import uuid
 import time
 import logging
 
-from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.outputs import LLMResult
-from langchain_core.runnables import RunnableConfig
-from langgraph.types import interrupt
+# Optional framework deps — install the `langgraph` extra to USE this adapter.
+# Guarded so `import cortexheal` and the control-plane server work WITHOUT them
+# (the server must not require every agent framework to be installed).
+try:
+    from langchain_core.callbacks import BaseCallbackHandler
+    from langchain_core.outputs import LLMResult
+    from langchain_core.runnables import RunnableConfig
+    from langgraph.types import interrupt
+    _LANGGRAPH_AVAILABLE = True
+except ImportError:  # pragma: no cover - the with-extra path is the tested one
+    BaseCallbackHandler = object
+    LLMResult = Any
+    RunnableConfig = Any
+
+    def interrupt(*args, **kwargs):
+        raise RuntimeError("LangGraph is not installed. Install the 'langgraph' extra to use LangGraphAdapter.")
+
+    _LANGGRAPH_AVAILABLE = False
 
 from cortexheal.adapters.base import FrameworkAdapter
 from cortexheal.models.events import RuntimeEvent

@@ -31,7 +31,7 @@ def test_api_health_readiness():
 def test_config_hardening():
     from cortexheal.config import Settings
     
-    with pytest.raises(ValueError, match="Default authentication tokens cannot be used in production"):
+    with pytest.raises(ValueError, match="authentication tokens cannot be used in production"):
         Settings(ENVIRONMENT="production", ADMIN_TOKENS="admin-key", OPERATOR_TOKENS="operator-key", DATABASE_URL="postgresql://cortexheal:cortexpassword@localhost:5432/cortexheal_db")
 
 @patch('cortexheal.server.api.get_incidents', return_value=[])

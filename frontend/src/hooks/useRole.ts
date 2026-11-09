@@ -1,21 +1,26 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useAuth } from "../components/AuthGate";
 
+export type Role = "VIEWER" | "OPERATOR" | "ADMIN" | "UNKNOWN";
+
+/**
+ * Role + auth-error handling. The role comes from the authenticated user
+ * (session or API key), resolved once by AuthGate via /api/auth/me — never
+ * inferred from 403 side-channels.
+ */
 export function useRole() {
-  const [role, setRole] = useState<'UNKNOWN' | 'VIEWER'>(
-    (sessionStorage.getItem('cortexheal_role') as 'VIEWER') || 'UNKNOWN'
-  );
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const role: Role = user?.role ?? "UNKNOWN";
+
+  const isOperator = role === "OPERATOR" || role === "ADMIN";
+  const isAdmin = role === "ADMIN";
 
   const handleApiError = useCallback((error: unknown) => {
-    const err = error as { status?: number; [key: string]: unknown };
+    const err = error as { status?: number };
     if (err?.status === 401) {
       logout();
-    } else if (err?.status === 403) {
-      sessionStorage.setItem('cortexheal_role', 'VIEWER');
-      setRole('VIEWER');
     }
   }, [logout]);
 
-  return { role, handleApiError };
+  return { role, isOperator, isAdmin, handleApiError };
 }

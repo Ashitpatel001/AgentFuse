@@ -5,10 +5,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str = "postgresql://cortexheal:cortexpassword@localhost:5432/cortexheal_db"
-    DB_POOL_SIZE: int = 5
-    DB_MAX_OVERFLOW: int = 10
+    # Connection pool. Pool max per process = DB_POOL_SIZE + DB_MAX_OVERFLOW.
+    # Capacity rule (ADR-003): replicas * (DB_POOL_SIZE + DB_MAX_OVERFLOW) must
+    # stay under Postgres max_connections minus reserved superuser slots.
+    DB_POOL_MIN: int = 2
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
     DB_TIMEOUT: int = 30
     
+    # Redis (SSE fanout + per-org rate limiting). Empty = single-replica dev mode
+    # (in-process SSE fanout, no cross-replica). Set for horizontal scale (ADR-004).
+    REDIS_URL: str = ""
+
     # API / Control Plane Configuration
     CORTEXHEAL_HOST: str = "0.0.0.0"
     CORTEXHEAL_PORT: int = 8000
@@ -32,6 +40,10 @@ class Settings(BaseSettings):
     # Detection
     DETECTOR_VERSION: str = "1.0"
     POLICY_VERSION: str = "1.0"
+
+    # Retention (ADR-004): raw events are aged out; incidents + audit_events are
+    # retained far longer (compliance) and are NEVER purged by the retention job.
+    RETENTION_DAYS: int = 90
     
     # Rate Limiting
     API_RATE_LIMIT_PER_MIN: int = 60

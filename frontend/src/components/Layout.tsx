@@ -1,111 +1,165 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Activity, ShieldAlert, LogOut, Download, Server, KeyRound } from "lucide-react";
+import { Activity, ShieldAlert, LogOut, Download, Server, KeyRound, Users, Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useSSE } from "../sse";
 import { useAuth } from "./AuthGate";
 import { ExportAuditModal } from "./ExportAuditModal";
 import { cn } from "../utils";
 
+const navItems = [
+  { to: "/", icon: ShieldAlert, label: "Incidents", hint: "I" },
+  { to: "/queues", icon: Layers, label: "Agent Queues", hint: "Q" },
+  { to: "/runs", icon: Activity, label: "Executions", hint: "E" },
+  { to: "/fleet", icon: Server, label: "Fleet Status", hint: "F" },
+];
+
+const adminItems = [
+  { to: "/team", icon: Users, label: "Team" },
+  { to: "/keys", icon: KeyRound, label: "API Keys" },
+];
+
+function NavItem({
+  to,
+  icon: Icon,
+  label,
+  hint,
+  end,
+}: {
+  to: string;
+  icon: typeof Activity;
+  label: string;
+  hint?: string;
+  end?: boolean;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        cn(
+          "group relative flex items-center gap-2.5 px-3 py-[7px] rounded-lg text-[13px] font-medium transition-colors",
+          isActive
+            ? "bg-white/[0.06] text-text-primary"
+            : "text-text-tertiary hover:text-text-secondary hover:bg-white/[0.03]"
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-accent rounded-r-full" />
+          )}
+          <Icon className={cn("w-[15px] h-[15px]", isActive && "text-accent")} />
+          <span className="flex-1">{label}</span>
+          {hint && (
+            <span className="text-[10px] font-mono text-text-muted/50 group-hover:text-text-muted transition-colors">
+              {hint}
+            </span>
+          )}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
 export function Layout() {
   useSSE();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const { data: sseStatus = "disconnected" } = useQuery<string>({ queryKey: ["sse_status"], queryFn: () => "disconnected", staleTime: Infinity, refetchOnMount: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  const { data: sseStatus = "disconnected" } = useQuery<string>({
+    queryKey: ["sse_status"],
+    queryFn: () => "disconnected",
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
   return (
-    <div className="flex h-screen bg-background text-slate-300 font-sans">
-      <aside className="w-64 border-r border-border bg-surface flex flex-col">
-        <div className="p-4 border-b border-border flex items-center gap-3">
-          <Activity className="w-6 h-6 text-accent" />
-          <span className="text-lg font-bold text-white tracking-wide">CortexHeal</span>
+    <div className="flex h-screen bg-bg-base text-text-secondary font-sans">
+      <aside className="w-[220px] flex flex-col border-r border-border-subtle">
+        {/* Logo */}
+        <div className="h-14 px-4 flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-accent rounded-lg flex items-center justify-center">
+            <Activity className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="text-[15px] font-bold text-text-primary tracking-tight">
+            CortexHeal
+          </span>
         </div>
-        
-        <nav className="flex-1 p-4 space-y-2">
-          <NavLink
-            to="/"
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-3 py-2 transition-colors",
-                isActive ? "bg-border text-white" : "text-slate-400 hover:text-slate-200 hover:bg-border/50"
-              )
-            }
-          >
-            <ShieldAlert className="w-5 h-5" />
-            Incidents
-          </NavLink>
-          <NavLink
-            to="/runs"
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-                isActive ? "bg-accent/10 text-accent font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-              )
-            }
-          >
-            <Activity className="w-5 h-5" />
-            Executions
-          </NavLink>
-          <NavLink
-            to="/fleet"
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-                isActive ? "bg-accent/10 text-accent font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-              )
-            }
-          >
-            <Server className="w-5 h-5" />
-            Fleet Status
-          </NavLink>
-          {sessionStorage.getItem("cortexheal_role") === "ADMIN" && (
-            <NavLink
-              to="/keys"
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-                  isActive ? "bg-accent/10 text-accent font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                )
-              }
-            >
-              <KeyRound className="w-5 h-5" />
-              API Keys
-            </NavLink>
+
+        {/* Nav */}
+        <nav className="flex-1 px-2.5 py-1 space-y-0.5 overflow-y-auto">
+          {navItems.map((item) => (
+            <NavItem key={item.to} {...item} end={item.to === "/"} />
+          ))}
+
+          {user?.role === "ADMIN" && (
+            <>
+              <div className="pt-4 pb-1.5 px-3">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                  Admin
+                </span>
+              </div>
+              {adminItems.map((item) => (
+                <NavItem key={item.to} {...item} />
+              ))}
+            </>
           )}
 
           <button
             onClick={() => setIsExportOpen(true)}
-            className="flex items-center gap-3 px-3 py-2 w-full text-slate-400 hover:text-slate-200 hover:bg-border/50 transition-colors text-left"
+            className="group flex items-center gap-2.5 px-3 py-[7px] w-full rounded-lg text-[13px] font-medium text-text-tertiary hover:text-text-secondary hover:bg-white/[0.03] transition-colors text-left mt-0.5"
           >
-            <Download className="w-5 h-5 text-accent" />
-            Export Audit Log
+            <Download className="w-[15px] h-[15px]" />
+            <span className="flex-1">Export Audit Log</span>
           </button>
         </nav>
 
-        <div className="p-4 border-t border-border space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-400">Stream</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-wider font-mono text-slate-500">
-                {sseStatus}
-              </span>
+        {/* Footer */}
+        <div className="px-3 py-3 border-t border-border-subtle space-y-2.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Stream</span>
+            <div className="flex items-center gap-1.5">
               <div
                 className={cn(
-                  "w-2.5 h-2.5 rounded-full",
-                  sseStatus === "connected" && "bg-accent shadow-[0_0_8px_rgba(59,130,246,0.6)]",
-                  sseStatus === "reconnecting" && "bg-status-amber animate-pulse",
-                  sseStatus === "disconnected" && "bg-status-red"
+                  "w-1.5 h-1.5 rounded-full",
+                  sseStatus === "connected"
+                    ? "bg-emerald-400 shadow-[0_0_6px_rgba(34,197,94,0.5)]"
+                    : sseStatus === "reconnecting"
+                    ? "bg-amber-400 animate-pulse"
+                    : "bg-red-400/60"
                 )}
               />
+              <span className="text-[10px] font-mono text-text-muted">
+                {sseStatus}
+              </span>
             </div>
           </div>
-          <button 
-            onClick={logout}
-            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition-colors w-full"
-          >
-            <LogOut className="w-4 h-4" />
-            Disconnect
-          </button>
+
+          {user && (
+            <div className="flex items-center gap-2.5 px-1">
+              <div className="w-7 h-7 rounded-lg bg-bg-overlay flex items-center justify-center text-[11px] font-semibold text-text-tertiary uppercase flex-shrink-0">
+                {user.email[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] text-text-secondary font-medium truncate" title={user.email}>
+                  {user.email}
+                </div>
+                <div className="text-[10px] font-mono text-text-muted">
+                  {user.role}{user.auth === "api_key" ? " · key" : ""}
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-bg-elevated transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 

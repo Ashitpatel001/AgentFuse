@@ -1,72 +1,88 @@
 import { Link, NavLink } from "react-router-dom";
-import { Activity, ArrowRight, Code2 } from "lucide-react";
+import { Activity, ArrowRight, Code2, Sparkles, UserPlus } from "lucide-react";
 
-export function Navbar() {
+const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173";
+
+interface NavbarProps {
+  onOpenSignUp?: () => void;
+}
+
+export function Navbar({ onOpenSignUp }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="p-1.5 bg-blue-600 rounded-md text-white group-hover:bg-blue-700 transition-colors">
-              <Activity className="w-5 h-5" />
+            <div className="p-1.5 bg-blue-600 rounded-lg text-white shadow-sm shadow-blue-600/20 group-hover:scale-105 transition-transform">
+              <Activity className="w-4 h-4" />
             </div>
-            <span className="text-xl font-extrabold text-slate-900 tracking-tight">
-              Cortex<span className="text-blue-600">Heal</span>
+            <span className="text-[15px] font-bold text-slate-900 tracking-tight">
+              CortexHeal
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+          <nav className="hidden md:flex items-center gap-6 text-[13px] font-medium text-slate-500">
+            <a
+              href="#monitoring"
+              className="transition-colors hover:text-slate-900 flex items-center gap-1"
+            >
+              <Sparkles className="w-3 h-3 text-blue-600" />
+              Watchdog
+            </a>
+            <a
+              href="#pricing"
+              className="transition-colors hover:text-slate-900"
+            >
+              Pricing
+            </a>
             <NavLink
               to="/docs"
               className={({ isActive }) =>
-                `transition-colors hover:text-slate-900 ${
-                  isActive ? "text-blue-600 font-semibold" : ""
-                }`
+                `transition-colors hover:text-slate-900 ${isActive ? "text-slate-900" : ""}`
               }
             >
-              Documentation
+              Docs
             </NavLink>
             <NavLink
               to="/blog"
               className={({ isActive }) =>
-                `transition-colors hover:text-slate-900 ${
-                  isActive ? "text-blue-600 font-semibold" : ""
-                }`
+                `transition-colors hover:text-slate-900 ${isActive ? "text-slate-900" : ""}`
               }
             >
-              Engineering Blog
+              Blog
             </NavLink>
-            <a
-              href="http://127.0.0.1:8000/docs"
-              target="_blank"
-              rel="noreferrer"
-              className="text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              API Reference
-            </a>
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <a
-            href="https://github.com/Ashitpatel001/CortexHeal"
+            href="https://github.com/Ashitpatel001/Cortexheal"
             target="_blank"
             rel="noreferrer"
-            className="p-2 text-slate-500 hover:text-slate-900 transition-colors hidden sm:flex items-center gap-1 text-xs font-mono font-medium"
+            className="p-2 text-slate-400 hover:text-slate-700 transition-colors rounded-lg hover:bg-slate-100"
             title="GitHub Repository"
           >
             <Code2 className="w-4 h-4" />
-            <span>Source</span>
           </a>
 
+          {/* Sign Up Button for new users */}
+          <button
+            onClick={onOpenSignUp}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 text-[13px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-xl transition-all"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Up</span>
+          </button>
+
+          {/* Launch Dashboard CTA */}
           <a
-            href="http://localhost:5173"
+            href={DASHBOARD_URL}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm shadow-blue-600/20 hover:shadow-blue-600/30 transition-all"
           >
-            <span>Live Ops Dashboard</span>
-            <ArrowRight className="w-4 h-4" />
+            Dashboard
+            <ArrowRight className="w-3.5 h-3.5" />
           </a>
         </div>
       </div>

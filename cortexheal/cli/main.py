@@ -434,6 +434,56 @@ def debug(run_id):
         ))
 
 
+@cli.command(name="create-org")
+@click.option("--org-name", required=True, help="Display name of the new organization.")
+@click.option("--email", required=True, help="Email of the first ADMIN user.")
+@click.option("--password", prompt=True, hide_input=True, confirmation_prompt=True,
+              help="Admin password (prompted securely if omitted).")
+def create_org(org_name, email, password):
+    """Create a new organization and its first ADMIN user (tenant bootstrap).
+
+    There is no public self-service signup; a new tenant is stood up here. The
+    admin can then invite teammates from the dashboard.
+    """
+    from cortexheal.storage.postgres import init_db
+    from cortexheal.storage import auth_store
+
+    if len(password) < 8:
+        click.secho("Password must be at least 8 characters.", fg="red")
+        raise SystemExit(1)
+
+    init_db()  # ensure schema (migrations) is applied
+    if auth_store.get_user_by_email(email):
+        click.secho("A user with email {} already exists.".format(email), fg="red")
+        raise SystemExit(1)
+
+    org, user = auth_store.bootstrap_org_and_admin(org_name, email, password)
+    click.secho("Created organization '{}'".format(org_name), fg="green")
+    click.echo("  org_id : {}".format(org.org_id))
+    click.echo("  admin  : {} (role ADMIN)".format(user.email))
+    click.echo("Log in at the dashboard with this email and password.")
+
+
+@cli.command()
+@click.option("--days", default=None, type=int, help="Override RETENTION_DAYS.")
+@click.option("--org", default=None, help="Limit purge to a single org_id.")
+def retention(days, org):
+    """Age out raw telemetry events (ADR-004). Incidents + audit are retained.
+
+    Idempotent and safe to run on a schedule. On a laptop that may be off,
+    schedule at logon / on an interval with your own --if-due guard rather than a
+    fixed night slot.
+    """
+    from cortexheal.config import settings
+    from cortexheal.storage.postgres import init_db, purge_events_older_than
+
+    d = days if days is not None else settings.RETENTION_DAYS
+    init_db()
+    deleted = purge_events_older_than(d, org_id=org)
+    scope = "org {}".format(org) if org else "all orgs"
+    click.secho("Retention: purged {} event(s) older than {} days ({}).".format(deleted, d, scope), fg="green")
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------

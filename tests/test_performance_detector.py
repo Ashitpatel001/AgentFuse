@@ -1,47 +1,69 @@
+"""
+Detector per-event overhead.
+
+The StuckLoopDetector is Postgres-backed: every evaluate() issues one indexed
+SELECT on events(run_id). This measures realistic per-event overhead and reports
+p50/p95/p99 (never a single mean, per the latency-reporting standard). It does
+NOT assert "sub-millisecond" — that only ever held for the old in-memory
+detector; the DB round-trip is real and is part of the end-to-end pipeline.
+"""
 import time
-import tracemalloc
+import uuid
+
+import pytest
+
 from cortexheal.detection.engine import DetectionEngine
-from cortexheal.detection.stuck_loop import Config as SLConfig
 from cortexheal.models.events import RuntimeEvent
+from cortexheal.models.run import AgentRun
+from cortexheal.storage.postgres import init_db, save_run, save_event
+
+
+@pytest.fixture(autouse=True)
+def _schema():
+    init_db()
+    yield
+
+
+def _pct(values, p):
+    s = sorted(values)
+    k = int(round((p / 100.0) * (len(s) - 1)))
+    return s[k]
+
+
+def _event(run_id, seq):
+    return RuntimeEvent(
+        framework="langgraph", run_id=run_id, agent_id="perf_agent",
+        event_type="TOOL_CALL_COMPLETED", status="success", sequence_number=seq,
+        idempotency_key=f"{run_id}_{seq}", tool="tool_X",
+        arguments_hash="args_X", response_hash="resp_X",
+    )
+
 
 def test_performance_detector_overhead():
+    run_id = f"perf_{uuid.uuid4().hex[:8]}"
+    save_run(AgentRun(
+        run_id=run_id, agent_id="perf_agent", org_id="perf_org",
+        framework="langgraph", status="running", protection_mode="ACTIVE",
+    ))
+    # A couple of prior events so the query returns rows but stays below the
+    # default threshold (no match -> measures the pure detection SELECT path).
+    for i in range(1, 3):
+        save_event(_event(run_id, i))
+
     engine = DetectionEngine()
-    
-    # Pre-generate events to isolate generation time from processing time
-    # Benchmark 1,000,000 events
-    event = RuntimeEvent(framework="langgraph", 
-        run_id="perf_run",
-        agent_id="perf_agent",
-        event_type="TOOL_CALL_COMPLETED",
-        status="success",
-        sequence_number=1,
-        idempotency_key="idem",
-        tool="tool_X",
-        arguments_hash="args_X",
-        response_hash="resp_X",
-        cost=None
-    )
-    
-    tracemalloc.start()
-    start_time = time.time()
-    
-    # Process 1,000,000 events
-    for _ in range(1000000):
-        engine.evaluate(event)
-        
-    end_time = time.time()
-    current, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-    
-    duration = end_time - start_time
-    per_event_ms = (duration / 1000000) * 1000
-    peak_mb = peak / 1024 / 1024
-    
-    print(f"Processed 1,000,000 events in {duration:.2f} seconds")
-    print(f"Per-event latency: {per_event_ms:.5f} ms")
-    print(f"Peak memory usage: {peak_mb:.2f} MB")
-    
-    # Because it is O(1) in memory and CPU per event:
-    assert per_event_ms < 0.5  # Sub-millisecond latency per event
-    assert duration < 180.0  # Should be extremely fast, adjusting threshold for slow CI / VM environments
-    assert peak_mb < 5.0  # Should barely use any memory since it only stores 1 entry per run_id
+    probe = _event(run_id, 999)  # not persisted; evaluated repeatedly
+
+    N = 1000
+    latencies_ms = []
+    for _ in range(N):
+        t0 = time.perf_counter()
+        engine.evaluate(probe)
+        latencies_ms.append((time.perf_counter() - t0) * 1000.0)
+
+    p50, p95, p99 = _pct(latencies_ms, 50), _pct(latencies_ms, 95), _pct(latencies_ms, 99)
+    print(f"detector per-event overhead over {N} calls: "
+          f"p50={p50:.3f}ms p95={p95:.3f}ms p99={p99:.3f}ms")
+
+    # Realistic budget for one indexed SELECT over a warm local pool.
+    assert p95 < 25.0, f"detector p95 overhead too high: {p95:.3f}ms"
+    assert p99 < 50.0, f"detector p99 overhead too high: {p99:.3f}ms"
