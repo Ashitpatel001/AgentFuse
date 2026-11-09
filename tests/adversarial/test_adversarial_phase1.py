@@ -236,58 +236,54 @@ def test_p1_5_threshold_boundary():
 # ============================================================
 def test_p1_6_concurrent_runs():
     print("\n=== P1-6: Concurrent runs (20 simultaneous) ===")
+    # The detector is stateless and Postgres-backed (no in-memory _state dict):
+    # it counts repetitions by querying events WHERE run_id = %s, so 20 runs
+    # evaluated concurrently must each trip independently with zero cross-run
+    # contamination. Events are persisted first, exactly as the collector does.
+    from cortexheal.storage.postgres import init_db, save_run, save_event
+    from cortexheal.models.run import AgentRun
+    init_db()
+
     detector = StuckLoopDetector(Config())
     detector.config.repetition_threshold = 3
-    
+
+    batch = uuid.uuid4().hex[:8]
     errors = []
     results_by_run = {}
     lock = threading.Lock()
-    
+
     def run_agent(run_idx):
         try:
-            run_id = f"concurrent_run_{run_idx}"
+            run_id = f"concurrent_{batch}_{run_idx}"
+            save_run(AgentRun(run_id=run_id, agent_id="test_agent", org_id="adv_org",
+                              framework="langgraph", status="running", protection_mode="ACTIVE"))
             local_results = []
             for i in range(5):
-                ev = make_event(run_id, "tool_x", "args_x", "resp_x", seq=i+1)
-                result = detector.evaluate(ev)
-                local_results.append(result)
+                ev = make_event(run_id, "tool_x", "args_x", "resp_x", seq=i + 1)
+                save_event(ev)
+                local_results.append(detector.evaluate(ev))
             with lock:
                 results_by_run[run_id] = local_results
-        except Exception as e:
+        except Exception:
             with lock:
                 errors.append(f"run_{run_idx}: {traceback.format_exc()}")
-    
+
     threads = [threading.Thread(target=run_agent, args=(i,)) for i in range(20)]
     for t in threads:
         t.start()
     for t in threads:
-        t.join(timeout=10)
-    
-    # Check: each run should have triggered independently
-    trigger_counts = {}
-    for run_id, results in results_by_run.items():
-        trigger_counts[run_id] = sum(1 for r in results if r and r.matched)
-    
-    # Each run has 5 events with threshold 3, so triggers at event 3,4,5 = 3 triggers
-    all_correct = all(c == 3 for c in trigger_counts.values())
-    
-    raw = (f"runs_completed={len(results_by_run)}, errors={errors}, "
-           f"trigger_counts={trigger_counts}")
-    
-    if errors:
-        record("P1-6", "Concurrent runs: no errors", False, raw)
-    elif not all_correct:
-        record("P1-6", "Concurrent runs: each run triggers independently", False, raw)
-    else:
-        record("P1-6", "Concurrent runs: 20 runs, each triggers at threshold, no cross-contamination", 
-               True, raw)
+        t.join(timeout=30)
 
-    # Check for cross-contamination in internal state
-    state_runs = set(detector._state.keys())
-    expected_runs = {f"concurrent_run_{i}" for i in range(20)}
-    cross = state_runs - expected_runs
-    raw_cross = f"state_keys={state_runs}, unexpected={cross}"
-    record("P1-6b", "No cross-contamination in detector state", len(cross) == 0, raw_cross)
+    trigger_counts = {rid: sum(1 for r in results if r and r.matched)
+                      for rid, results in results_by_run.items()}
+
+    raw = f"runs_completed={len(results_by_run)}, errors={errors[:2]}, trigger_counts={trigger_counts}"
+
+    # 5 identical calls at threshold 3 -> triggers on calls 3,4,5 = exactly 3 per run.
+    assert not errors, f"concurrent runs raised: {errors[:2]}"
+    assert len(results_by_run) == 20, f"expected 20 runs, got {len(results_by_run)}"
+    assert all(c == 3 for c in trigger_counts.values()), f"per-run trigger counts wrong: {trigger_counts}"
+    record("P1-6", "20 concurrent runs each trigger independently, no cross-contamination", True, raw)
 
 # ============================================================
 # PHASE 2: BUDGET DETECTOR

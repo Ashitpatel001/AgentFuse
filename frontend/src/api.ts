@@ -33,6 +33,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(endpoint, {
     ...options,
     headers,
+    credentials: "include", // send the session cookie (human-auth plane)
   });
 
   if (!response.ok) {
@@ -43,9 +44,51 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
+export interface AuthUser {
+  user_id: string;
+  email: string;
+  org_id: string;
+  role: "VIEWER" | "OPERATOR" | "ADMIN";
+  auth: "session" | "api_key";
+}
+
+export interface MetricsSummary {
+  runs_monitored: number;
+  incidents_detected: number;
+  runs_flagged: number;
+  cost_on_flagged_runs_usd: number;
+  time_to_detection_ms: { p50: number | null; p95: number | null; p99: number | null; count: number };
+}
+
 export const api = {
   health: () => fetchWithAuth("/health"),
-  
+
+  // --- Human auth (session) ---
+  login: (email: string, password: string): Promise<AuthUser> =>
+    fetchWithAuth("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }),
+  logout: (): Promise<{ status: string }> =>
+    fetchWithAuth("/api/auth/logout", { method: "POST" }),
+  me: (): Promise<AuthUser> => fetchWithAuth("/api/auth/me"),
+  getUsers: (): Promise<Array<{ user_id: string; email: string; role: string; status: string; created_at: string; last_login_at: string | null }>> =>
+    fetchWithAuth("/api/users"),
+  getMetrics: (): Promise<MetricsSummary> => fetchWithAuth("/api/metrics/summary"),
+  invite: (email: string, role: string): Promise<{ status: string; invite_token: string }> =>
+    fetchWithAuth("/api/invitations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, role }),
+    }),
+  acceptInvite: (token: string, password: string): Promise<AuthUser> =>
+    fetchWithAuth("/api/auth/accept-invitation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    }),
+
   getIncidents: (skip = 0, limit = 50): Promise<PaginatedResponse<Incident>> => 
     fetchWithAuth(`/api/incidents?skip=${skip}&limit=${limit}`),
     
@@ -75,6 +118,9 @@ export const api = {
 
   getFleet: (): Promise<any[]> => 
     fetchWithAuth(`/api/fleet`),
+
+  getPatterns: (): Promise<{ data: any[] }> =>
+    fetchWithAuth(`/api/patterns`),
     
   getRuns: (skip = 0, limit = 50): Promise<PaginatedResponse<Run>> => 
     fetchWithAuth(`/api/runs?skip=${skip}&limit=${limit}`),
@@ -100,7 +146,7 @@ export const api = {
     const headers = new Headers();
     if (key) headers.set("X-API-Key", key);
 
-    const response = await fetch(`/api/audit/export?${query.toString()}`, { headers });
+    const response = await fetch(`/api/audit/export?${query.toString()}`, { headers, credentials: "include" });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new ApiError(response.status, err.detail || response.statusText);

@@ -276,26 +276,25 @@ def test_p4_6_rate_limit():
 
 def test_p5():
     print("\n=== P5: SSE analysis ===")
-    from cortexheal.server.api import SSE_CLIENTS
-    
-    # SSE event types analysis (code review)
-    raw = ("SSE emits only 2 event types: 'update' (generic, data='new_data_available') and "
-           "'heartbeat' (data='ping'). No specific types for incident_created, run_paused, "
-           "run_resumed, plan_approved, plan_rejected, recovery_executed, recovery_verified. "
-           "Client must poll REST API after 'update' to learn what changed.")
-    record("P5-3", "SSE lacks specific event types (only generic 'update' + heartbeat)",
-           False,
-           raw + " | FINDING: SSE is a notification bell, not a proper event stream. "
-           "Frontend must still poll REST after every notification.")
-    
-    # SSE cleanup code review
     import inspect
-    from cortexheal.server.api import api_stream
-    src = inspect.getsource(api_stream)
-    has_finally = "finally:" in src
-    has_discard = "discard" in src
-    raw2 = f"finally_block={has_finally}, discard_call={has_discard}"
-    record("P5-2", "SSE cleanup code exists", has_finally and has_discard, raw2)
+    import cortexheal.server.api as api_mod
+    from cortexheal.server import sse_bus
+
+    # SSE is now typed AND org-scoped, fanned out via a Redis-capable bus.
+    bus_src = inspect.getsource(sse_bus)
+    assert "_CHANNEL_PREFIX" in bus_src and "org_id" in bus_src, "SSE bus must be org-scoped"
+    record("P5-1", "SSE fan-out is org-scoped (per-tenant channels; no cross-org leak)", True, "")
+
+    api_src = inspect.getsource(api_mod)
+    assert 'broadcast_sse_event("incident_created"' in api_src
+    assert 'broadcast_sse_event("run_status_changed"' in api_src
+    record("P5-3", "SSE emits specific typed events (incident_created, run_status_changed, ...)",
+           True, "typed events present")
+
+    # Client cleanup on disconnect.
+    src = inspect.getsource(api_mod.api_stream)
+    assert "finally:" in src and "unregister_client" in src
+    record("P5-2", "SSE cleans up client registration on disconnect", True, "finally+unregister")
 
 # ============================================================
 # PHASE 6: CHAOS

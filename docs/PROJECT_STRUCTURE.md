@@ -1,47 +1,47 @@
 # CortexHeal Project Structure
 
-CortexHeal is a deterministic Detection Engine and Self-Healing Platform for AI Agents.
-The repository has been thoroughly cleaned and stabilized for production usage.
+CortexHeal is a deterministic Detection Engine and Self-Healing Platform for AI Agents, deployed as a multi-tenant SaaS product.
 
 ## Core Directories
 
 - **`cortexheal/`**: The core library and application package.
-  - **`adapters/`**: Integrations with AI agent frameworks. Supported: LangGraph, AutoGen.
-  - **`detection/`**: The deterministic runtime detection engine. Handles budgets, loops, bounds.
-  - **`protection/`**: Safely pauses agent execution. The `ProtectionController` provides isolated boundaries.
-  - **`recovery/`**: Analyzes incidents and generates verifiable execution plans using AI.
-  - **`learning/`**: Phase 10 component mapping incidents to safe recovery patterns via fingerprinting.
-  - **`models/`**: Pydantic validation schemas.
-  - **`runtime/`**: Event collector and hashing utilities.
-  - **`server/`**: FastAPI Control Plane providing SSE streams and API endpoints.
-  - **`storage/`**: PostgreSQL interactions and connection pooling.
+  - **`adapters/`**: Framework integrations (LangGraph, AutoGen, CrewAI stub).
+  - **`detection/`**: Deterministic runtime detection engine (stuck loops, budget overruns).
+  - **`protection/`**: Safely pauses agent execution via `ProtectionController`.
+  - **`recovery/`**: Incident analysis and structured recovery plan generation.
+  - **`learning/`**: Failure-fingerprint → recovery-pattern mapping.
+  - **`models/`**: Pydantic schemas (`events.py`, `run.py`, `auth.py`, `protection.py`).
+  - **`runtime/`**: Event collector (bounded queue, background worker) and hashing.
+  - **`server/`**: FastAPI control plane (`api.py`), SSE fan-out (`sse_bus.py`).
+  - **`storage/`**: PostgreSQL pool + CRUD (`postgres.py`), auth store (`auth_store.py`).
+  - **`alerting/`**: Webhook dispatch (async, non-blocking).
   - **`telemetry/`**: Prometheus metrics and operational counters.
-  - **`config.py`**: Pydantic Settings configuration system.
-  - **`client.py`**: Python SDK for programmatic CortexHeal interaction.
-- **`tests/`**: Comprehensive E2E, unit, integration, and performance testing suite.
-- **`alembic/` & `alembic.ini`**: Database migration tooling and state.
-- **`docs/`**: Key architectural, setup, and structural documentation.
-- **`dashboard/`**: (If present) React-based Frontend interface for the Control Plane.
+  - **`cli/`**: Click CLI (`cortexheal start`, `create-org`, `retention`).
+  - **`config.py`**: Pydantic Settings (env-driven).
+  - **`client.py`**: Python SDK.
+- **`migrations/`**: yoyo-migrations (plain Python). `0001_baseline_schema.py` (full schema), `0002_auth_tables.py` (multi-tenant auth).
+- **`tests/`**: Unit, integration, adversarial, e2e, and performance tests (140 passing).
+- **`frontend/`**: React 19 + TanStack Query + Tailwind 4 dashboard (dark-mode-first ops UI).
+- **`site/`**: Marketing site (React + Vite, light theme).
+- **`docs/`**: Architecture decisions, API contract, safety model, failure taxonomy.
+- **`scripts/`**: `cron_demo_runner.py` (supervised demo data generator).
+- **`examples/`**: Demo scenarios (stuck loop, budget overrun, multi-agent fleet).
 
 ## Configuration & Environment
 
-- **`.env.example`**: Reference template for configuring CortexHeal.
-- **`.env`**: Local active environment file.
-- **`docker-compose.yml`**: Spawns required infrastructure (e.g., PostgreSQL on 5433).
-- **`pyproject.toml`**: Python package configuration and dependencies.
+- **`.env`**: Local environment (gitignored). Template values in `.env.example`.
+- **`.env.production`**: Production secrets (gitignored).
+- **`docker-compose.prod.yml`**: Production stack (postgres + redis + api + demo-runner).
+- **`pyproject.toml`**: Package config. Core deps: psycopg2, yoyo-migrations, argon2-cffi, redis, httpx.
 
-## Key Capabilities
+## Migration Tooling
 
-1. **Observe**: Captures high-frequency agent actions.
-2. **Detect**: Applies deterministic thresholds to catch run-away behavior.
-3. **Protect**: Synchronously suspends agents before damage is done.
-4. **Control**: Provides human-in-the-loop review queues.
-5. **Recover**: Analyzes context to generate verifiable recovery plans.
-6. **Learn**: Maps failure fingerprints to successful recovery patterns over time.
+**yoyo-migrations** (ADR-002). Alembic was removed — it could not autogenerate against raw psycopg2 (no ORM metadata), causing schema drift. `init_db()` applies yoyo migrations as the single source of truth. The container self-migrates on startup.
 
 ## Architecture Guidelines
 
-- Always prefer deterministic execution constraints over AI-generated safety rules.
-- Database access MUST flow through the connection pool configured in `cortexheal/storage/postgres.py`.
-- Production credentials MUST NOT use the `admin-key` default fallbacks.
-- New adapters must inherit from `cortexheal.adapters.base.BaseAdapter`.
+- Deterministic safety decisions only — zero LLMs in the decision path.
+- Database access flows through the config-driven connection pool in `cortexheal/storage/postgres.py`.
+- All endpoints are org-scoped (tenant isolation enforced at the handler level).
+- Two-plane auth: API keys (machine, X-API-Key header) + argon2id sessions (human, HttpOnly cookie) → same RBAC.
+- Production credentials must never use dev-token defaults.

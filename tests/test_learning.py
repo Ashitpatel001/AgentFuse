@@ -51,7 +51,7 @@ def test_generate_fingerprint_deterministic(dummy_incident, dummy_event):
 def test_pattern_engine_create_new(mock_save, mock_get, dummy_incident, dummy_event):
     mock_get.return_value = None
     engine = PatternEngine()
-    pattern = engine.get_or_create_pattern(dummy_incident, dummy_event)
+    pattern = engine.get_or_create_pattern(dummy_incident, dummy_event, "test_org")
     assert pattern.occurrences == 1
     mock_save.assert_called_once()
     assert pattern.fingerprint.startswith("v1-")
@@ -64,6 +64,7 @@ def test_pattern_engine_update_existing(mock_save, mock_get, dummy_incident, dum
         framework="cortex",
         agent_id="agent-456",
         failure_type="STUCK_LOOP",
+        org_id="test_org",
         fingerprint="v1-xyz",
         fingerprint_version="v1",
         occurrences=5
@@ -71,7 +72,7 @@ def test_pattern_engine_update_existing(mock_save, mock_get, dummy_incident, dum
     mock_get.return_value = existing
     
     engine = PatternEngine()
-    pattern = engine.get_or_create_pattern(dummy_incident, dummy_event)
+    pattern = engine.get_or_create_pattern(dummy_incident, dummy_event, "test_org")
     assert pattern.occurrences == 6
     mock_save.assert_called_once()
     assert pattern.pattern_id == "p-1"
@@ -124,6 +125,7 @@ def test_ranking_engine(mock_get_outcomes):
         framework="cortex",
         agent_id="agent-456",
         failure_type="STUCK_LOOP",
+        org_id="test_org",
         fingerprint="v1-xyz",
         fingerprint_version="v1"
     )

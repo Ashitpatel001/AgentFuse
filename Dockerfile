@@ -20,6 +20,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml README.md ./
 COPY cortexheal/ ./cortexheal/
 COPY scripts/ ./scripts/
+# Migrations are the single source of truth for the schema and MUST ship with
+# the image (the app applies them at startup via init_db()).
+COPY migrations/ ./migrations/
+
+# The package installs non-editable (runs from site-packages), so point the
+# migration runner at the copied migrations explicitly.
+ENV CORTEXHEAL_MIGRATIONS_DIR=/app/migrations
 
 # Install the application and its dependencies without editable mode
 RUN pip install --no-cache-dir .

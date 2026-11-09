@@ -36,6 +36,18 @@ services:
     networks:
       - cortexheal
 
+  # ── Redis (SSE fan-out + per-org rate limiting) ───────────
+  redis:
+    image: redis:7-alpine
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cortexheal
+
   # ── Backend API ───────────────────────────────────────────
   api:
     build:
@@ -45,12 +57,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env.production
     environment:
       # Override DATABASE_URL to point at the Postgres container on the
       # Docker network (not localhost — containers resolve by service name)
       DATABASE_URL: postgresql://cortexheal:${POSTGRES_PASSWORD}@postgres:5432/cortexheal_db
+      # Redis on the compose network → cross-worker SSE fan-out + rate limiting.
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "127.0.0.1:8000:8000"
     networks:
@@ -71,9 +87,12 @@ services:
       - .env.production
     environment:
       DATABASE_URL: postgresql://cortexheal:${POSTGRES_PASSWORD}@postgres:5432/cortexheal_db
+      REDIS_URL: redis://redis:6379/0
       DEMO_ORG_ID: demo_public
-    # Override the default CMD to run the demo worker instead of uvicorn
-    command: ["python", "scripts/cron_demo_runner.py"]
+    # The demo scenarios drive real LangGraph agents, so this container needs the
+    # optional langgraph extra (the api image deliberately does not). Installed at
+    # start to keep the shared base image lean.
+    command: ["sh", "-c", "pip install --no-cache-dir 'langgraph>=0.0.10' 'langchain-core>=0.1.0' && python scripts/cron_demo_runner.py"]
     networks:
       - cortexheal
 

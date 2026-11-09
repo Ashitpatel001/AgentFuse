@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Security, Request, Query, Response
+from fastapi import FastAPI, HTTPException, Depends, Security, Request, Query, Response, Cookie
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -18,12 +18,16 @@ from cortexheal.storage.postgres import (
     get_events_for_run, get_audit_events_for_run, get_recovery_plan_by_incident,
     save_api_key, get_api_key_by_hash, get_api_keys_by_org, revoke_api_key, update_api_key_last_used,
     save_webhook_config, get_webhook_configs_by_org, delete_webhook_config, get_notifications_by_org,
-    get_audit_export_records
+    get_audit_export_records, get_metrics_summary
 )
 from cortexheal.models.auth import (
     ApiKey, ApiKeyCreateRequest, ApiKeyResponse, ApiKeyCreatedResponse,
-    hash_key, generate_raw_key
+    hash_key, generate_raw_key,
+    LoginRequest, InviteRequest, AcceptInviteRequest, AuthUserResponse,
+    UserAccount, hash_password, verify_password,
+    SESSION_COOKIE_NAME, SESSION_TTL_HOURS,
 )
+from cortexheal.storage import auth_store
 from cortexheal.models.alerting import WebhookConfig, WebhookCreateRequest, NotificationRecord
 from cortexheal.alerting.dispatcher import alert_dispatcher
 from cortexheal.protection.controller import ProtectionController
@@ -39,30 +43,16 @@ from cortexheal.telemetry import metrics
 
 logger = setup_logging()
 
-# --- SERVER-SENT EVENTS (SSE) STATE ---
-# Dictionary mapping subscription_key -> set of client queues
-# Each queue receives dicts: {"event": "event_type", "data": {...}}
-SSE_CLIENTS = {}
+# --- SERVER-SENT EVENTS (SSE) ---
+# Org-scoped fan-out via sse_bus (Redis-backed when REDIS_URL is set, in-process
+# otherwise). Events are delivered ONLY to the owning org's dashboards — they
+# never cross a tenant boundary.
+from cortexheal.server import sse_bus
 
-def broadcast_sse_event(event_type: str, data: dict, run_id: str = None):
-    """
-    Push a typed SSE event to all connected clients.
-    If run_id is provided, notifies clients subscribed to that run_id AND 'global'.
-    If run_id is None, notifies only 'global' subscribers.
-    Thread-safe: uses put_nowait which is safe from non-async threads.
-    """
-    message = {"event": event_type, "data": data}
-    target_keys = ["global"]
-    if run_id:
-        target_keys.append(run_id)
-    
-    for key in target_keys:
-        if key in SSE_CLIENTS:
-            for q in list(SSE_CLIENTS[key]):
-                try:
-                    q.put_nowait(message)
-                except asyncio.QueueFull:
-                    pass
+
+def broadcast_sse_event(event_type: str, data: dict, run_id: str = None, org_id: str = None):
+    """Publish a typed SSE event to a single org's connected dashboards."""
+    sse_bus.publish(org_id, event_type, data, run_id=run_id)
 
 async def poll_db_for_updates():
     """
@@ -87,7 +77,10 @@ async def poll_db_for_updates():
             
             current_incidents = {i.incident_id: i for i in current_incidents_list}
             current_runs = {r.run_id: r.status for r in current_runs_list}
-            
+            # Map run_id -> org_id so every SSE event is fanned out to the
+            # correct tenant only (no cross-org leak).
+            run_org = {r.run_id: r.org_id for r in current_runs_list}
+
             # Detect new incidents
             for iid, incident in current_incidents.items():
                 if iid not in last_incidents:
@@ -96,8 +89,8 @@ async def poll_db_for_updates():
                         "run_id": incident.run_id,
                         "failure_type": incident.failure_type,
                         "severity": incident.severity,
-                    }, run_id=incident.run_id)
-            
+                    }, run_id=incident.run_id, org_id=run_org.get(incident.run_id))
+
             # Detect run status changes
             for rid, status in current_runs.items():
                 old_status = last_runs.get(rid)
@@ -106,7 +99,7 @@ async def poll_db_for_updates():
                         "run_id": rid,
                         "old_status": old_status,
                         "new_status": status,
-                    }, run_id=rid)
+                    }, run_id=rid, org_id=run_org.get(rid))
             
             last_incidents = current_incidents
             last_runs = current_runs
@@ -126,13 +119,22 @@ async def poll_escalations():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup: apply DB migrations so a fresh deployment is self-provisioning
+    # (idempotent + advisory-locked, so concurrent workers/replicas are safe).
+    try:
+        from cortexheal.storage.postgres import init_db
+        await asyncio.to_thread(init_db)
+        logger.info("Startup: database migrations applied")
+    except Exception as e:
+        logger.error(f"Startup init_db failed: {e}")
+    await sse_bus.start()  # capture loop; start Redis subscriber if configured
     polling_task = asyncio.create_task(poll_db_for_updates())
     escalation_task = asyncio.create_task(poll_escalations())
     yield
     # Shutdown
     polling_task.cancel()
     escalation_task.cancel()
+    await sse_bus.stop()
 
 app = FastAPI(title="CortexHeal Control Plane", lifespan=lifespan)
 
@@ -143,32 +145,88 @@ app.mount("/metrics", metrics_app)
 # --- RATE LIMITING (In-Memory for V1) ---
 RATE_LIMIT_STORE = {}
 
+_rl_redis = None
+
+
+def _rl_get_redis():
+    """Lazy sync Redis client for cross-replica rate limiting; None if unset."""
+    global _rl_redis
+    if not sse_bus.redis_enabled():
+        return None
+    if _rl_redis is None:
+        import redis as _sync_redis
+        _rl_redis = _sync_redis.from_url(settings.REDIS_URL)
+    return _rl_redis
+
+
+def _rl_bucket(request: Request) -> str:
+    """Rate-limit bucket: per-ORG for authenticated callers (noisy-neighbor
+    isolation, §7.4) so one tenant cannot degrade service for others; per-IP for
+    unauthenticated requests (coarse DoS guard)."""
+    api_key = request.headers.get(API_KEY_NAME)
+    if api_key:
+        try:
+            k = get_api_key_by_hash(hash_key(api_key))
+            if k:
+                return f"org:{k.org_id}"
+        except Exception:
+            pass
+        if settings.ALLOW_DEV_TOKENS and (
+            api_key in ADMIN_TOKENS or api_key in OPERATOR_TOKENS or api_key in VIEWER_TOKENS
+        ):
+            return "org:default_org"
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if token:
+        try:
+            row = auth_store.resolve_session(token)
+            if row:
+                return f"org:{row['org_id']}"
+        except Exception:
+            pass
+    ip = request.client.host if request.client else "unknown"
+    return f"ip:{ip}"
+
+
 async def rate_limit(request: Request):
-    client_ip = request.client.host if request.client else "unknown"
+    bucket = _rl_bucket(request)
+    limit = settings.API_RATE_LIMIT_PER_MIN
     now = time.time()
-    if client_ip not in RATE_LIMIT_STORE:
-        RATE_LIMIT_STORE[client_ip] = []
-    
-    # Clean up old requests (older than 1 minute)
-    RATE_LIMIT_STORE[client_ip] = [t for t in RATE_LIMIT_STORE[client_ip] if now - t < 60]
-    
-    if len(RATE_LIMIT_STORE[client_ip]) >= settings.API_RATE_LIMIT_PER_MIN:
-        # RFC 6585 §4: 429 SHOULD include Retry-After header
-        oldest_request = RATE_LIMIT_STORE[client_ip][0]
-        retry_after = max(1, int(60 - (now - oldest_request)))
-        raise HTTPException(
-            status_code=429,
-            detail="Too Many Requests",
-            headers={"Retry-After": str(retry_after)}
-        )
-        
-    RATE_LIMIT_STORE[client_ip].append(now)
+
+    r = _rl_get_redis()
+    if r is not None:
+        # Fixed-window counter in Redis — correct across horizontally-scaled replicas.
+        window = int(now // 60)
+        key = f"cortexheal:rl:{bucket}:{window}"
+        try:
+            count = r.incr(key)
+            if count == 1:
+                r.expire(key, 60)
+            if count > limit:
+                raise HTTPException(status_code=429, detail="Too Many Requests",
+                                    headers={"Retry-After": str(max(1, 60 - int(now % 60)))})
+            return
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"rate-limit redis error, falling back to in-memory: {e}")
+
+    # In-memory sliding window (single replica / dev).
+    times = [t for t in RATE_LIMIT_STORE.get(bucket, []) if now - t < 60]
+    if len(times) >= limit:
+        retry_after = max(1, int(60 - (now - times[0])))
+        RATE_LIMIT_STORE[bucket] = times
+        raise HTTPException(status_code=429, detail="Too Many Requests",
+                            headers={"Retry-After": str(retry_after)})
+    times.append(now)
+    RATE_LIMIT_STORE[bucket] = times
 
 app.router.dependencies.append(Depends(rate_limit))
 
 # --- AUTHENTICATION & AUTHORIZATION ---
 API_KEY_NAME = "X-API-Key"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
+# auto_error=False: a request may authenticate via the session cookie instead of
+# the API key header, so a missing header must not short-circuit to 403 here.
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 # Simple V1 Token-based Auth configured via ENV (used only if ALLOW_DEV_TOKENS=True)
 VIEWER_TOKENS = settings.get_viewer_tokens()
@@ -176,43 +234,61 @@ OPERATOR_TOKENS = settings.get_operator_tokens()
 ADMIN_TOKENS = settings.get_admin_tokens()
 
 class User:
-    def __init__(self, username: str, role: str, org_id: str = "default_org", key_id: str = None):
+    def __init__(self, username: str, role: str, org_id: str = "default_org",
+                 key_id: str = None, user_id: str = None, auth: str = "api_key"):
         self.username = username
         self.role = role
         self.org_id = org_id
         self.key_id = key_id
+        # Human user id when authenticated via a dashboard session; None for a
+        # machine (API key). This is what lets audit events name the acting human.
+        self.user_id = user_id
+        self.auth = auth  # "api_key" | "session"
 
-def get_current_user(api_key: str = Security(api_key_header)):
-    # 1. Check database for valid hashed API key
-    k_hash = hash_key(api_key)
-    try:
-        db_key = get_api_key_by_hash(k_hash)
-        if db_key:
-            if db_key.revoked_at is not None:
-                raise HTTPException(status_code=403, detail="API Key is revoked")
-            # Update last used timestamp
-            update_api_key_last_used(db_key.key_id)
-            return User(
-                username=db_key.name,
-                role=db_key.role,
-                org_id=db_key.org_id,
-                key_id=db_key.key_id
-            )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.warning(f"Error querying API key from DB: {e}")
+def get_current_user(
+    api_key: str = Security(api_key_header),
+    session_token: str = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+):
+    """
+    Two-plane auth (ADR-005). Machine plane: X-API-Key. Human plane: session
+    cookie. Both resolve to the same User + RBAC role — one authorization path.
+    """
+    # --- Plane 1: machine auth (API key), when presented ---
+    if api_key:
+        try:
+            db_key = get_api_key_by_hash(hash_key(api_key))
+            if db_key:
+                if db_key.revoked_at is not None:
+                    raise HTTPException(status_code=403, detail="API Key is revoked")
+                update_api_key_last_used(db_key.key_id)
+                return User(username=db_key.name, role=db_key.role,
+                            org_id=db_key.org_id, key_id=db_key.key_id, auth="api_key")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Error querying API key from DB: {e}")
 
-    # 2. Check local dev bypass tokens if explicitly allowed
-    if settings.ALLOW_DEV_TOKENS:
-        if api_key in ADMIN_TOKENS:
-            return User(username="admin_user", role="ADMIN", org_id="default_org")
-        elif api_key in OPERATOR_TOKENS:
-            return User(username="operator_user", role="OPERATOR", org_id="default_org")
-        elif api_key in VIEWER_TOKENS:
-            return User(username="viewer_user", role="VIEWER", org_id="default_org")
+        if settings.ALLOW_DEV_TOKENS:
+            if api_key in ADMIN_TOKENS:
+                return User(username="admin_user", role="ADMIN", org_id="default_org")
+            elif api_key in OPERATOR_TOKENS:
+                return User(username="operator_user", role="OPERATOR", org_id="default_org")
+            elif api_key in VIEWER_TOKENS:
+                return User(username="viewer_user", role="VIEWER", org_id="default_org")
 
-    raise HTTPException(status_code=403, detail="Invalid API Key")
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+
+    # --- Plane 2: human auth (dashboard session cookie) ---
+    if session_token:
+        row = auth_store.resolve_session(session_token)
+        if row:
+            return User(username=row["email"], role=row["role"], org_id=row["org_id"],
+                        user_id=row["user_id"], auth="session")
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    # No credentials on either plane -> 401 Unauthorized (matches the framework's
+    # prior auto_error behavior and correct HTTP semantics for "not authenticated").
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 def require_operator(user: User = Depends(get_current_user)):
     if user.role not in ["OPERATOR", "ADMIN"]:
@@ -241,9 +317,101 @@ _cors_origins = [o for o in _cors_origins if o != "*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_methods=["GET", "POST"],
+    allow_credentials=True,  # session cookie auth for the dashboard (ADR-005)
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["X-API-Key", "Content-Type"],
 )
+
+# ==========================================================================
+# HUMAN AUTH (Plane 2) — sessions, login/logout, invitations (ADR-005).
+# Machine auth (X-API-Key) is unchanged; both planes share the same RBAC.
+# ==========================================================================
+_COOKIE_SECURE = settings.ENVIRONMENT == "production"
+
+
+def _set_session_cookie(response: Response, raw_token: str):
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME, value=raw_token,
+        httponly=True, secure=_COOKIE_SECURE, samesite="lax",
+        max_age=SESSION_TTL_HOURS * 3600, path="/",
+    )
+
+
+@app.post("/api/auth/login", response_model=AuthUserResponse)
+def api_login(payload: LoginRequest, response: Response):
+    user = auth_store.get_user_by_email(payload.email)
+    # Uniform error whether the email is unknown, disabled, or the password is
+    # wrong — do not leak which accounts exist.
+    if (not user or user.status != "ACTIVE"
+            or not verify_password(user.password_hash, payload.password)):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    raw = auth_store.create_session_for_user(user.user_id)
+    auth_store.update_user_last_login(user.user_id)
+    _set_session_cookie(response, raw)
+    return AuthUserResponse(user_id=user.user_id, email=user.email,
+                            org_id=user.org_id, role=user.role, auth="session")
+
+
+@app.post("/api/auth/logout")
+def api_logout(response: Response,
+               session_token: str = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
+    if session_token:
+        auth_store.revoke_session(session_token)
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    return {"status": "success"}
+
+
+@app.get("/api/auth/me", response_model=AuthUserResponse)
+def api_auth_me(user: User = Depends(get_current_user)):
+    return AuthUserResponse(user_id=user.user_id or "", email=user.username,
+                            org_id=user.org_id, role=user.role, auth=user.auth)
+
+
+@app.get("/api/metrics/summary")
+def api_metrics_summary(user: User = Depends(get_current_user)):
+    """Org-scoped, provable value-prop metrics (detection latency, cost on
+    flagged runs, counts). All numbers derived from real data."""
+    return get_metrics_summary(user.org_id)
+
+
+@app.get("/api/users")
+def api_list_users(user: User = Depends(require_admin)):
+    """List members of the caller's org (Team screen). org_id from the caller,
+    never the request — no cross-org enumeration."""
+    return auth_store.list_users_by_org(user.org_id)
+
+
+@app.post("/api/invitations")
+def api_create_invitation(payload: InviteRequest, user: User = Depends(require_admin)):
+    """An ADMIN invites a teammate into their OWN org (org_id is taken from the
+    caller, never the request body — no cross-org invitation is possible)."""
+    if auth_store.get_user_by_email(payload.email):
+        raise HTTPException(status_code=409, detail="A user with that email already exists")
+    raw = auth_store.create_invitation(user.org_id, payload.email, payload.role,
+                                       invited_by=user.user_id)
+    # Emailed in production; returned here so the flow is usable before email
+    # delivery exists. Never logged.
+    return {"status": "success", "email": payload.email,
+            "role": payload.role, "invite_token": raw}
+
+
+@app.post("/api/auth/accept-invitation", response_model=AuthUserResponse)
+def api_accept_invitation(payload: AcceptInviteRequest, response: Response):
+    inv = auth_store.get_pending_invitation(payload.token)
+    if not inv:
+        raise HTTPException(status_code=400, detail="Invalid or expired invitation")
+    if auth_store.get_user_by_email(inv.email):
+        raise HTTPException(status_code=409, detail="A user with that email already exists")
+    # Claim the single-use invite atomically before creating the account.
+    if not auth_store.mark_invitation_accepted(inv.invite_id):
+        raise HTTPException(status_code=400, detail="Invitation already used")
+    user = UserAccount(org_id=inv.org_id, email=inv.email,
+                       password_hash=hash_password(payload.password), role=inv.role)
+    auth_store.create_user_account(user)
+    raw = auth_store.create_session_for_user(user.user_id)
+    _set_session_cookie(response, raw)
+    return AuthUserResponse(user_id=user.user_id, email=user.email,
+                            org_id=user.org_id, role=user.role, auth="session")
 
 protection_controller = ProtectionController()
 recovery_engine = RecoveryEngine()
@@ -464,6 +632,10 @@ def api_get_incident(incident_id: str, user: User = Depends(get_current_user)):
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
     run = get_run(inc.run_id)
+    # Tenant isolation: an incident belongs to the org of its run. 404 (not 403)
+    # so another tenant cannot even confirm the incident exists.
+    if not run or run.org_id != user.org_id:
+        raise HTTPException(status_code=404, detail="Incident not found")
     inc_dict = inc.model_dump()
     inc_dict['run_status'] = run.status if run else 'unknown'
     inc_dict['protection_mode'] = run.protection_mode if run else 'UNKNOWN'
@@ -517,16 +689,18 @@ def api_get_fleet(user: User = Depends(get_current_user)):
 @app.get("/api/runs/{run_id}")
 def api_get_run(run_id: str, user: User = Depends(get_current_user)):
     run = get_run(run_id)
-    if not run:
+    # Tenant isolation: 404 (not 403) on cross-org access to avoid enumeration.
+    if not run or run.org_id != user.org_id:
         raise HTTPException(status_code=404, detail="Run not found")
     return run
 
 @app.get("/api/runs/{run_id}/timeline")
 def api_get_run_timeline(run_id: str, user: User = Depends(get_current_user)):
     run = get_run(run_id)
-    if not run:
+    # Tenant isolation: 404 (not 403) on cross-org access to avoid enumeration.
+    if not run or run.org_id != user.org_id:
         raise HTTPException(status_code=404, detail="Run not found")
-        
+
     events = get_events_for_run(run_id)
     audits = get_audit_events_for_run(run_id)
     incidents = [i for i in get_incidents() if i.run_id == run_id]
@@ -562,18 +736,19 @@ def api_get_run_timeline(run_id: str, user: User = Depends(get_current_user)):
 @app.post("/api/runs/{run_id}/resume")
 def api_resume_run(run_id: str, user: User = Depends(require_operator)):
     run = get_run(run_id)
-    if not run:
+    # Tenant isolation: a cross-org caller must not resume another org's run.
+    if not run or run.org_id != user.org_id:
         raise HTTPException(status_code=404, detail="Run not found")
-        
+
     if run.protection_mode == 'DISABLED':
         raise HTTPException(status_code=400, detail="Cannot resume a run that is PROTECTION_DISABLED")
-        
+
     try:
         protection_controller.resume(run_id, actor_id=user.username, reason="Resumed via Control Plane")
         broadcast_sse_event("run_resumed", {
             "run_id": run_id,
             "actor": user.username,
-        }, run_id=run_id)
+        }, run_id=run_id, org_id=user.org_id)
         return {"status": "success", "message": f"Resume requested for run {run_id}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -605,15 +780,18 @@ def api_get_recovery_plan(incident_id: str, user: User = Depends(get_current_use
     # Autogenerate or retrieve
     plan = get_recovery_plan_by_incident(incident_id)
     incident = get_incident(incident_id)
+    # Tenant isolation: the incident (and thus its plan) must belong to the
+    # caller's org, resolved via the incident's run. 404 to avoid enumeration.
+    inc_run = get_run(incident.run_id) if incident else None
+    if not incident or not inc_run or inc_run.org_id != user.org_id:
+        raise HTTPException(status_code=404, detail="Incident not found")
     if not plan:
-        if not incident:
-            raise HTTPException(status_code=404, detail="Incident not found")
         plan = recovery_engine.generate_plan(incident)
         
     plan_dict = plan.model_dump()
     if incident:
         try:
-            from cortexheal.storage.postgres import get_events_for_run, get_run
+            from cortexheal.storage.postgres import get_events_for_run
             from cortexheal.learning.pattern import PatternEngine
             from cortexheal.learning.trust import TrustEngine
             
@@ -646,10 +824,16 @@ def api_get_recovery_plan(incident_id: str, user: User = Depends(get_current_use
 
 @app.post("/api/incidents/{incident_id}/plan/approve")
 def api_approve_recovery_plan(incident_id: str, user: User = Depends(require_operator)):
+    # Tenant isolation FIRST: a cross-org caller must never reach the executor.
+    incident = get_incident(incident_id)
+    inc_run = get_run(incident.run_id) if incident else None
+    if not incident or not inc_run or inc_run.org_id != user.org_id:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
     plan = get_recovery_plan_by_incident(incident_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-        
+
     success = recovery_executor.execute_plan(plan, user.role, user.username)
     if not success:
         raise HTTPException(status_code=400, detail="Plan execution failed or was denied")
@@ -658,15 +842,21 @@ def api_approve_recovery_plan(incident_id: str, user: User = Depends(require_ope
         "incident_id": incident_id,
         "plan_id": plan.plan_id,
         "actor": user.username,
-    }, run_id=plan.run_id)
+    }, run_id=plan.run_id, org_id=user.org_id)
     return {"status": "success", "message": "Plan executed successfully"}
 
 @app.post("/api/incidents/{incident_id}/plan/reject")
 def api_reject_recovery_plan(incident_id: str, user: User = Depends(require_operator)):
+    # Tenant isolation FIRST: a cross-org caller must never mutate another org's plan.
+    incident = get_incident(incident_id)
+    inc_run = get_run(incident.run_id) if incident else None
+    if not incident or not inc_run or inc_run.org_id != user.org_id:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
     plan = get_recovery_plan_by_incident(incident_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-        
+
     success = recovery_executor.reject_plan(plan, user.role, user.username)
     if not success:
         raise HTTPException(status_code=400, detail="Could not reject plan")
@@ -675,7 +865,7 @@ def api_reject_recovery_plan(incident_id: str, user: User = Depends(require_oper
         "incident_id": incident_id,
         "plan_id": plan.plan_id,
         "actor": user.username,
-    }, run_id=plan.run_id)
+    }, run_id=plan.run_id, org_id=user.org_id)
     return {"status": "success", "message": "Plan rejected"}
 
 
@@ -683,48 +873,37 @@ def api_reject_recovery_plan(incident_id: str, user: User = Depends(require_oper
 @app.get("/api/stream")
 async def api_stream(request: Request, run_id: str = None, user: User = Depends(get_current_user)):
     """
-    Stream real-time updates for the dashboard.
-    Scalable: Uses a single global DB polling task and async queues per client.
+    Org-scoped real-time stream for the dashboard. A client only ever receives
+    events for its OWN organization — sse_bus publishes on per-org channels and
+    registers this client under the caller's org_id.
     """
-    client_queue = asyncio.Queue(maxsize=10)
-    
-    # Track by run_id (or 'global' if not provided)
-    sub_key = run_id if run_id else 'global'
-    if sub_key not in SSE_CLIENTS:
-        SSE_CLIENTS[sub_key] = set()
-    SSE_CLIENTS[sub_key].add(client_queue)
-    
+    # Subscribing to a specific run requires that run to belong to the caller's org.
+    if run_id:
+        run = get_run(run_id)
+        if not run or run.org_id != user.org_id:
+            raise HTTPException(status_code=404, detail="Run not found")
+
+    sub_key, client_queue = sse_bus.register_client(user.org_id, run_id)
+
     async def event_generator():
         try:
             while True:
                 if await request.is_disconnected():
                     break
                 try:
-                    # Wait for a typed event from the broadcaster
                     message = await asyncio.wait_for(client_queue.get(), timeout=5.0)
                     if isinstance(message, dict):
                         yield {
                             "event": message.get("event", "update"),
-                            "data": json.dumps(message.get("data", {}))
+                            "data": json.dumps(message.get("data", {})),
                         }
                     else:
-                        # Backward compatibility for any plain string messages
-                        yield {
-                            "event": "update",
-                            "data": str(message)
-                        }
+                        yield {"event": "update", "data": str(message)}
                 except asyncio.TimeoutError:
-                    # Send a heartbeat every 5 seconds to keep connection alive
-                    yield {
-                        "event": "heartbeat",
-                        "data": "ping"
-                    }
+                    yield {"event": "heartbeat", "data": "ping"}
         finally:
-            if sub_key in SSE_CLIENTS:
-                SSE_CLIENTS[sub_key].discard(client_queue)
-                if not SSE_CLIENTS[sub_key]:
-                    del SSE_CLIENTS[sub_key]
-            
+            sse_bus.unregister_client(user.org_id, sub_key, client_queue)
+
     return EventSourceResponse(event_generator())
 
 
@@ -762,6 +941,11 @@ def get_patterns_api(user: User = Depends(get_current_user)):
         })
         
     return {"data": results}
+
+
+# --- PROXY GATEWAY ROUTER (/v1/chat/completions) ---
+from cortexheal.server.gateway import gateway_router
+app.include_router(gateway_router)
 
 
 # --- STATIC FILES ---

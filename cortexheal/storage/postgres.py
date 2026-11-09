@@ -25,13 +25,16 @@ _pool = None
 def init_pool():
     global _pool
     if _pool is None:
-        max_conn = max(100, settings.DB_POOL_SIZE * 10)
+        # Config-driven sizing (ADR-003). Capacity rule:
+        #   replicas * max_conn < postgres max_connections - reserved
+        min_conn = settings.DB_POOL_MIN
+        max_conn = settings.DB_POOL_SIZE + settings.DB_MAX_OVERFLOW
         _pool = psycopg2.pool.ThreadedConnectionPool(
-            10,
+            min_conn,
             max_conn,
             settings.DATABASE_URL
         )
-        logger.info(f"Initialized PostgreSQL ThreadedConnectionPool (max={max_conn})")
+        logger.info(f"Initialized PostgreSQL ThreadedConnectionPool (min={min_conn}, max={max_conn})")
 
 _pool_lock = threading.Lock()
 
@@ -58,227 +61,32 @@ def get_connection():
         if _pool and conn:
             _pool.putconn(conn)
 
+# Default resolves relative to the source tree (dev / editable install). In a
+# non-editable/container install the code runs from site-packages, so the
+# container sets CORTEXHEAL_MIGRATIONS_DIR=/app/migrations explicitly.
+_MIGRATIONS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "migrations"))
+_migrations_applied = False
+
 def init_db():
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            # Runs table
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS runs (
-                    run_id VARCHAR(36) PRIMARY KEY,
-                    agent_id VARCHAR(255) NOT NULL,
-                    framework VARCHAR(50),
-                    model VARCHAR(100),
-                    provider VARCHAR(100),
-                    status VARCHAR(50),
-                    start_time TIMESTAMP WITH TIME ZONE,
-                    end_time TIMESTAMP WITH TIME ZONE,
-                    total_tokens INTEGER DEFAULT 0,
-                    total_cost DOUBLE PRECISION,
-                    failure_reason TEXT
-                )
-            """)
-            try:
-                cur.execute("ALTER TABLE runs ADD COLUMN IF NOT EXISTS protection_mode VARCHAR(20) DEFAULT 'ACTIVE'")
-            except Exception:
-                pass 
-            
-            # Events table
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS events (
-                    event_id VARCHAR(36) PRIMARY KEY,
-                    run_id VARCHAR(36) REFERENCES runs(run_id),
-                    agent_id VARCHAR(255),
-                    parent_run_id VARCHAR(36),
-                    timestamp TIMESTAMP WITH TIME ZONE,
-                    event_type VARCHAR(50),
-                    tool VARCHAR(255),
-                    arguments_hash VARCHAR(64),
-                    response_hash VARCHAR(64),
-                    tokens_prompt INTEGER,
-                    tokens_completion INTEGER,
-                    tokens_total INTEGER,
-                    cost DOUBLE PRECISION,
-                    latency_ms INTEGER,
-                    state_hash VARCHAR(64),
-                    status VARCHAR(50),
-                    sequence_number INTEGER,
-                    framework VARCHAR(50),
-                    model VARCHAR(100),
-                    provider VARCHAR(100),
-                    trace_id VARCHAR(100),
-                    span_id VARCHAR(100),
-                    idempotency_key VARCHAR(100) UNIQUE,
-                    environment VARCHAR(50),
-                    policy_version VARCHAR(50),
-                    detector_version VARCHAR(50)
-                )
-            """)
-            
-            # Indexes for queries
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_events_run_id ON events(run_id)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_events_agent_id ON events(agent_id)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)")
-            
-            # Incidents table
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS incidents (
-                    incident_id VARCHAR(36) PRIMARY KEY,
-                    run_id VARCHAR(36) REFERENCES runs(run_id),
-                    agent_id VARCHAR(255),
-                    failure_type VARCHAR(50),
-                    severity VARCHAR(20),
-                    status VARCHAR(20),
-                    detector VARCHAR(50),
-                    detector_version VARCHAR(20),
-                    trigger_event_id VARCHAR(36),
-                    triggered_at TIMESTAMP WITH TIME ZONE,
-                    evidence JSONB,
-                    observed_value JSONB,
-                    threshold JSONB,
-                    description TEXT,
-                    UNIQUE(run_id, failure_type, detector_version)
-                )
-            """)
-            
-            # Audit Events table
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS audit_events (
-                    event_id VARCHAR(36) PRIMARY KEY,
-                    run_id VARCHAR(36),
-                    incident_id VARCHAR(36),
-                    timestamp TIMESTAMP WITH TIME ZONE,
-                    action VARCHAR(50),
-                    actor VARCHAR(50), -- deprecated
-                    result VARCHAR(50),
-                    reason TEXT,
-                    policy_version VARCHAR(20)
-                )
-            """)
-            try:
-                cur.execute("ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS actor_type VARCHAR(20) DEFAULT 'SYSTEM'")
-                cur.execute("ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS actor_id VARCHAR(100) DEFAULT 'SYSTEM'")
-            except Exception:
-                pass
-                
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS recovery_plans (
-                    plan_id VARCHAR(36) PRIMARY KEY,
-                    incident_id VARCHAR(36),
-                    run_id VARCHAR(36),
-                    diagnosis TEXT,
-                    confidence FLOAT,
-                    proposed_actions JSONB,
-                    risk_level VARCHAR(20),
-                    created_at TIMESTAMP WITH TIME ZONE,
-                    planner_type VARCHAR(50),
-                    status VARCHAR(20),
-                    snapshot_run_status VARCHAR(50) DEFAULT 'unknown',
-                    snapshot_sequence_number INTEGER DEFAULT 0,
-                    ai_analysis JSONB,
-                    verification_status VARCHAR(50)
-                )
-            """)
-            
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS recovery_actions (
-                    action_id VARCHAR(36) PRIMARY KEY,
-                    run_id VARCHAR(36),
-                    incident_id VARCHAR(36),
-                    action_type VARCHAR(50),
-                    reason TEXT,
-                    parameters JSONB,
-                    risk_level VARCHAR(20),
-                    created_at TIMESTAMP WITH TIME ZONE,
-                    status VARCHAR(20)
-                )
-            """)
-            
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS pattern_records (
-                    pattern_id VARCHAR(36) PRIMARY KEY,
-                    framework VARCHAR(50),
-                    agent_id VARCHAR(255),
-                    failure_type VARCHAR(50),
-                    org_id VARCHAR(36) NOT NULL,
-                    fingerprint VARCHAR(128),
-                    UNIQUE(org_id, fingerprint),
-                    fingerprint_version VARCHAR(20),
-                    occurrences INTEGER DEFAULT 0,
-                    created_at TIMESTAMP WITH TIME ZONE,
-                    updated_at TIMESTAMP WITH TIME ZONE,
-                    is_promotion_candidate BOOLEAN DEFAULT FALSE
-                )
-            """)
-            
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS recovery_outcomes (
-                    outcome_id VARCHAR(36) PRIMARY KEY,
-                    run_id VARCHAR(36),
-                    incident_id VARCHAR(36),
-                    pattern_id VARCHAR(36) REFERENCES pattern_records(pattern_id),
-                    action_type VARCHAR(50),
-                    ai_recommendation VARCHAR(50),
-                    human_decision VARCHAR(50),
-                    approval_actor VARCHAR(100),
-                    execution_result VARCHAR(50),
-                    verification_result VARCHAR(50),
-                    timestamp TIMESTAMP WITH TIME ZONE
-                )
-            """)
-            
-            # API Keys table (Multi-tenant)
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS api_keys (
-                    key_id VARCHAR(36) PRIMARY KEY,
-                    key_hash VARCHAR(64) UNIQUE NOT NULL,
-                    key_prefix VARCHAR(32) NOT NULL,
-                    name VARCHAR(100) NOT NULL,
-                    org_id VARCHAR(100) NOT NULL,
-                    role VARCHAR(20) NOT NULL,
-                    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                    last_used_at TIMESTAMP WITH TIME ZONE,
-                    revoked_at TIMESTAMP WITH TIME ZONE
-                )
-            """)
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(org_id)")
-            
-            # Webhook configurations table
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS webhook_configs (
-                    webhook_id VARCHAR(36) PRIMARY KEY,
-                    org_id VARCHAR(100) NOT NULL,
-                    target_type VARCHAR(50) NOT NULL,
-                    url TEXT NOT NULL,
-                    enabled BOOLEAN DEFAULT TRUE,
-                    secret_token TEXT,
-                    min_severity VARCHAR(20) DEFAULT 'HIGH',
-                    escalation_timeout_minutes INTEGER DEFAULT 15,
-                    created_at TIMESTAMP WITH TIME ZONE NOT NULL
-                )
-            """)
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_webhook_configs_org ON webhook_configs(org_id)")
+    """
+    Apply all pending database migrations. This is the single source of truth for
+    the schema (docs/ARCHITECTURE.md ADR-002): tests, `cortexheal init`, and
+    production all take this path, which is why the historical schema-drift bug
+    (org_id missing from a clean build) cannot recur.
 
-            # Notification audit records table
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS notification_records (
-                    notification_id VARCHAR(36) PRIMARY KEY,
-                    org_id VARCHAR(100) NOT NULL,
-                    incident_id VARCHAR(36) NOT NULL,
-                    run_id VARCHAR(36) NOT NULL,
-                    notification_type VARCHAR(50) NOT NULL,
-                    target_url TEXT NOT NULL,
-                    payload JSONB NOT NULL,
-                    status VARCHAR(20) NOT NULL,
-                    status_code INTEGER,
-                    response_body TEXT,
-                    sent_at TIMESTAMP WITH TIME ZONE NOT NULL
-                )
-            """)
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_notifications_org ON notification_records(org_id)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_notifications_incident ON notification_records(incident_id)")
-
-            conn.commit()
+    Idempotent: a module-level guard makes repeat calls within a process a no-op,
+    and yoyo skips migrations already recorded in its _yoyo_migration table.
+    """
+    global _migrations_applied
+    if _migrations_applied:
+        return
+    from yoyo import read_migrations, get_backend
+    migrations_dir = os.environ.get("CORTEXHEAL_MIGRATIONS_DIR", _MIGRATIONS_DIR)
+    backend = get_backend(settings.DATABASE_URL)
+    migrations = read_migrations(migrations_dir)
+    with backend.lock():
+        backend.apply_migrations(backend.to_apply(migrations))
+    _migrations_applied = True
 
 def save_run(run: AgentRun):
     with get_connection() as conn:
@@ -909,3 +717,98 @@ def get_patterns_by_org(org_id: str) -> List[Any]:
         row["updated_at"] = row["updated_at"].isoformat()
         patterns.append(PatternRecord(**row))
     return patterns
+
+
+def get_metrics_summary(org_id: str) -> dict:
+    """
+    Real, provable, org-scoped metrics for the value-prop tiles (§10). Every
+    number is derived from actual data — no fabricated projections:
+      * runs_monitored / incidents_detected / runs_flagged (counts)
+      * cost_on_flagged_runs_usd: spend that HAD occurred on runs we flagged
+        (the concrete, defensible "runaway spend we caught" figure)
+      * time_to_detection_ms: incident.triggered_at - run.start_time, as
+        p50/p95/p99 (the "caught it fast, nobody paged at 3am" number)
+    """
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT count(*) AS n FROM runs WHERE org_id = %s", (org_id,))
+            runs_monitored = cur.fetchone()["n"]
+
+            cur.execute(
+                """SELECT count(*) AS incidents,
+                          count(DISTINCT i.run_id) AS flagged_runs
+                   FROM incidents i JOIN runs r ON i.run_id = r.run_id
+                   WHERE r.org_id = %s""",
+                (org_id,),
+            )
+            row = cur.fetchone()
+            incidents_detected, flagged_runs = row["incidents"], row["flagged_runs"]
+
+            cur.execute(
+                """SELECT COALESCE(SUM(r.total_cost), 0) AS cost
+                   FROM runs r
+                   WHERE r.org_id = %s
+                     AND r.run_id IN (SELECT DISTINCT run_id FROM incidents)""",
+                (org_id,),
+            )
+            cost_on_flagged = float(cur.fetchone()["cost"] or 0.0)
+
+            cur.execute(
+                """SELECT
+                       percentile_cont(0.5)  WITHIN GROUP (ORDER BY ms) AS p50,
+                       percentile_cont(0.95) WITHIN GROUP (ORDER BY ms) AS p95,
+                       percentile_cont(0.99) WITHIN GROUP (ORDER BY ms) AS p99,
+                       count(*) AS n
+                   FROM (
+                       SELECT EXTRACT(EPOCH FROM (i.triggered_at - r.start_time)) * 1000 AS ms
+                       FROM incidents i JOIN runs r ON i.run_id = r.run_id
+                       WHERE r.org_id = %s AND i.triggered_at IS NOT NULL AND r.start_time IS NOT NULL
+                   ) t
+                   WHERE ms >= 0""",
+                (org_id,),
+            )
+            lat = cur.fetchone()
+
+    def _ms(v):
+        return round(float(v), 1) if v is not None else None
+
+    return {
+        "runs_monitored": runs_monitored,
+        "incidents_detected": incidents_detected,
+        "runs_flagged": flagged_runs,
+        "cost_on_flagged_runs_usd": round(cost_on_flagged, 4),
+        "time_to_detection_ms": {
+            "p50": _ms(lat["p50"]), "p95": _ms(lat["p95"]),
+            "p99": _ms(lat["p99"]), "count": lat["n"],
+        },
+    }
+
+
+def purge_events_older_than(days: int, org_id: Optional[str] = None) -> int:
+    """
+    Retention job (ADR-004): delete raw `events` older than `days`. Incidents and
+    audit_events are the compliance record and are NEVER touched here. Returns the
+    number of event rows deleted. Optionally scope to a single org.
+
+    Safe to run repeatedly (idempotent). For a partitioned events table this
+    becomes a DROP PARTITION; until then it is a bounded DELETE.
+    """
+    if days <= 0:
+        raise ValueError("retention days must be > 0")
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            if org_id:
+                cur.execute(
+                    """DELETE FROM events
+                       WHERE timestamp < now() - make_interval(days => %s)
+                         AND run_id IN (SELECT run_id FROM runs WHERE org_id = %s)""",
+                    (days, org_id),
+                )
+            else:
+                cur.execute(
+                    "DELETE FROM events WHERE timestamp < now() - make_interval(days => %s)",
+                    (days,),
+                )
+            deleted = cur.rowcount
+        conn.commit()
+    return deleted

@@ -2,7 +2,7 @@
 
 **Deterministic Safety & Circuit-Breaker Control Plane for AI Agents**  
 *Document Version:* 1.0.0  
-*Status:* **PRODUCTION READY**
+*Status:* Verified: 140 tests passing, compose dry-run healthy, security regression fixed. Benchmarks below were measured pre-ADR-003 pool change and need re-measurement on the current configuration before being cited externally.
 
 ---
 

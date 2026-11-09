@@ -1,8 +1,17 @@
-# CortexHeal — Bare-Metal Deployment Runbook
+# CortexHeal — Bare-Metal Deployment Guide
 
-> **Audience**: Human operator with SSH access to the target Linux server.
-> This document was prepared locally — the agent has zero SSH access.
-> Every server-side command is listed explicitly for copy-paste execution.
+Single-server deployment: Docker Compose for backend services, Caddy for TLS and static file serving.
+
+## Architecture
+
+```
+Internet → Caddy (443) ─┬─ /api/*      → api container :8000
+                         ├─ /health     → api container :8000
+                         ├─ /dashboard* → frontend/dist (static SPA)
+                         └─ /*          → site/dist (static marketing)
+```
+
+**Stack:** PostgreSQL 15 · Redis 7 · FastAPI + uvicorn (4 workers) · React 19 + Vite (static) · Caddy 2
 
 ---
 
@@ -10,165 +19,206 @@
 
 | Requirement | Minimum |
 |---|---|
-| Linux server | Ubuntu 22.04+ / Debian 12+ (any systemd-based distro) |
-| Docker Engine | 24.0+ with `docker compose` v2 plugin |
-| Caddy | 2.7+ (installed in Phase 3) |
-| RAM | 2 GB+ |
-| Disk | 20 GB+ free for data + backups |
-| DNS | A records for `app.<domain>`, `api.<domain>`, `<domain>` pointing at server IP |
-
-> [!IMPORTANT]
-> **Confirm DNS propagation before starting.** Run `dig +short app.YOURDOMAIN.com`
-> from a machine outside the server. If it doesn't return your server IP, stop —
-> TLS provisioning (Caddy) will fail silently.
+| OS | Ubuntu 22.04+ / Debian 12+ (any systemd Linux) |
+| Docker Engine | 24+ with `docker compose` v2 |
+| Caddy | 2.7+ |
+| RAM | 2 GB |
+| Disk | 20 GB free |
+| DNS | A record for your domain pointing at the server IP |
 
 ---
 
-## Phase 2 — Persistent Storage Setup
-
-### Host directories that must exist before first run
-
-Create the following directories on the server. Docker will NOT create bind-mount
-source directories automatically — the compose file will fail if these are missing.
+## 1. Server preparation
 
 ```bash
-# Run on the server:
+# Host directories (Docker won't create bind-mount sources)
 sudo mkdir -p /opt/cortexheal/data/postgres
 sudo mkdir -p /opt/cortexheal/backups
-sudo mkdir -p /opt/cortexheal/repo
-
-# Postgres data dir must be owned by UID 999 (the postgres user inside the container)
 sudo chown -R 999:999 /opt/cortexheal/data/postgres
 
-# Backups dir owned by root (the backup script runs as root via crontab)
-sudo chown root:root /opt/cortexheal/backups
-sudo chmod 750 /opt/cortexheal/backups
+# Ensure Docker starts on boot
+sudo systemctl enable docker
 ```
 
-### Directory layout after setup
-
-```
-/opt/cortexheal/
-├── repo/                    # Git clone of CortexHeal
-│   ├── docker-compose.prod.yml
-│   ├── .env.production      # Real secrets — NEVER committed
-│   ├── scripts/
-│   │   └── backup_postgres.sh
-│   └── ...
-├── data/
-│   └── postgres/            # Bind-mounted Postgres data (survives container rebuilds)
-└── backups/
-    └── cortexheal_db_20260914_030000.sql.gz   # Timestamped dumps
-```
-
-### Scheduled backups
-
-The backup script runs `pg_dump` inside the Postgres container, gzips the output
-to `/opt/cortexheal/backups/`, and prunes dumps older than 30 days.
+## 2. Clone and configure
 
 ```bash
-# Run on the server — add this crontab entry:
-sudo crontab -e
+git clone <your-repo-url> /opt/cortexheal/app
+cd /opt/cortexheal/app
 
-# Add this line (daily at 03:00 server time):
-0 3 * * * /opt/cortexheal/repo/scripts/backup_postgres.sh >> /opt/cortexheal/backups/backup.log 2>&1
-```
-
-> [!NOTE]
-> The backup script expects the Postgres container to be named `cortexheal-postgres-1`
-> (the default when running `docker compose -f docker-compose.prod.yml up`).
-> If you override the project name, update `CONTAINER_NAME` in the script.
-
----
-
-*Phases 3–6 will be appended to this document as they are completed.*
-
----
-
-## Phase 3 � Reverse Proxy & TLS (Caddy)
-
-Caddy serves as the edge router. It terminates TLS automatically and routes traffic to the local Docker containers.
-
-### Installing and Configuring Caddy
-
-Run these commands as root on the server:
-
-\\\ash
-# 1. Install Caddy (Debian/Ubuntu)
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install caddy
-
-# 2. Copy the Caddyfile to the system directory
-# IMPORTANT: Edit /opt/cortexheal/repo/deploy/Caddyfile to replace YOURDOMAIN.com first!
-sudo cp /opt/cortexheal/repo/deploy/Caddyfile /etc/caddy/Caddyfile
-
-# 3. Reload Caddy to apply changes and provision TLS certificates
-sudo systemctl reload caddy
-\\\
-
-> [!NOTE]
-> Caddy naturally supports HTTP/2 and Server-Sent Events (SSE). No explicit buffering directives are needed for /api/stream to function correctly.
-
----
-
-## Phase 4 � Process Supervision (Docker & Systemd)
-
-The \docker-compose.prod.yml\ file defines \
-estart: always\ for all services (Postgres, API, and the Demo Runner). 
-The Demo Runner is fully containerized and managed by Docker, eliminating the need for raw Python processes.
-
-To ensure the entire stack survives a bare-metal server reboot, enable the Docker daemon to start on boot:
-
-\\\ash
-# Run on the server:
-sudo systemctl enable docker
-\\\
-
-
----
-
-## Phase 6 � Deployment & Verification
-
-After completing the Prerequisites and Phase 2 host directory setup, follow these exact steps to deploy the application.
-
-### 1. Clone the Repository
-\\\ash
-cd /opt/cortexheal
-git clone https://github.com/YOUR_ORG/CortexHeal.git repo
-cd repo
-\\\
-
-### 2. Configure Production Secrets
-\\\ash
 cp .env.production.example .env.production
 nano .env.production
-\\\
-*(Fill in all CHANGE_ME_REAL_PASSWORD and YOURDOMAIN placeholders with actual secure values)*
+```
 
-### 3. Start the Application Stack
-\\\ash
+Edit `.env.production` — set at minimum:
+
+| Variable | Action |
+|---|---|
+| `POSTGRES_PASSWORD` | Strong random string (32+ chars) |
+| `DATABASE_URL` | Match the password in the connection string |
+| `CORTEXHEAL_CORS_ORIGINS` | Your actual domain: `https://yourdomain.com` |
+
+**Never commit `.env.production` to version control.**
+
+## 3. Build frontend assets
+
+```bash
+# Dashboard SPA
+cd /opt/cortexheal/app/frontend
+npm ci && npm run build
+# → frontend/dist/
+
+# Marketing site
+cd /opt/cortexheal/app/site
+npm ci && npm run build
+# → site/dist/
+```
+
+If serving the dashboard under `/dashboard` (recommended), set `base` in
+`frontend/vite.config.ts` before building:
+
+```ts
+export default defineConfig({
+  base: '/dashboard/',
+  // ...rest of config
+})
+```
+
+## 4. Start the Docker stack
+
+```bash
+cd /opt/cortexheal/app
 docker compose -f docker-compose.prod.yml up -d --build
-\\\
+```
 
-### 4. Run Database Migrations
-\\\ash
-# The API container has alembic installed. Execute the migration inside it:
-docker compose -f docker-compose.prod.yml exec api alembic upgrade head
-\\\
+Services started:
 
-### 5. Verify Health
-Wait 30 seconds for services to fully start, then verify the backend is healthy:
-\\\ash
-curl -f https://api.YOURDOMAIN.com/health
-\\\
+- **postgres** — PostgreSQL 15, loopback :5432, data persisted to `/opt/cortexheal/data/postgres`
+- **redis** — Redis 7 Alpine, internal network only
+- **api** — FastAPI on loopback :8000, 4 uvicorn workers
+- **demo-runner** — Synthetic demo data (remove from compose if not needed)
 
-Verify authentication rejection (ensures API keys are required):
-\\\ash
-curl -f https://api.YOURDOMAIN.com/api/whoami
-# Should return HTTP 403 Forbidden
-\\\
+**Migrations run automatically** — the API calls `init_db()` on startup, which
+applies yoyo migrations. No manual migration step needed.
 
+Verify:
 
+```bash
+curl http://127.0.0.1:8000/health
+# {"status": "ok"}
+```
+
+## 5. Configure Caddy
+
+Install Caddy:
+
+```bash
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | \
+  sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | \
+  sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update && sudo apt install caddy
+```
+
+Create `/etc/caddy/Caddyfile` (replace `yourdomain.com`):
+
+```caddyfile
+yourdomain.com {
+    # API reverse proxy
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+    handle /health {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    # SSE — disable response buffering
+    handle /api/sse* {
+        reverse_proxy 127.0.0.1:8000 {
+            flush_interval -1
+        }
+    }
+
+    # Dashboard SPA
+    handle /dashboard* {
+        root * /opt/cortexheal/app/frontend/dist
+        uri strip_prefix /dashboard
+        try_files {path} /index.html
+        file_server
+    }
+
+    # Marketing site (catch-all)
+    root * /opt/cortexheal/app/site/dist
+    try_files {path} /index.html
+    file_server
+
+    encode gzip zstd
+}
+```
+
+Reload:
+
+```bash
+sudo systemctl reload caddy
+```
+
+Caddy auto-provisions TLS via Let's Encrypt. Site is now live at `https://yourdomain.com`.
+
+## 6. Create admin user
+
+The API ships with no default accounts. Create the first org and admin:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api \
+  python scripts/init_demo_org.py
+```
+
+Or use the programmatic approach from a Python shell inside the container.
+
+## 7. Scheduled backups
+
+Add to root crontab (`sudo crontab -e`):
+
+```cron
+0 3 * * * docker exec cortexheal-app-postgres-1 \
+  pg_dump -U cortexheal cortexheal_db | \
+  gzip > /opt/cortexheal/backups/db-$(date +\%Y\%m\%d).sql.gz
+
+0 4 * * * find /opt/cortexheal/backups -name "db-*.sql.gz" -mtime +30 -delete
+```
+
+## 8. Monitoring
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Returns `{"status": "ok"}` when API + DB are healthy |
+| `GET /api/metrics` | Incident counts, detection latency p50/p95, cost data |
+| Docker logs | `docker compose -f docker-compose.prod.yml logs -f api` |
+
+Point your uptime monitor (UptimeRobot, Healthchecks.io) at `https://yourdomain.com/health`.
+
+## 9. Updating
+
+```bash
+cd /opt/cortexheal/app
+git pull origin main
+
+# Rebuild frontends
+cd frontend && npm ci && npm run build && cd ..
+cd site && npm ci && npm run build && cd ..
+
+# Rebuild and restart API (migrations run automatically)
+docker compose -f docker-compose.prod.yml up -d --build
+
+# Caddy serves static files — no restart needed
+```
+
+## Security checklist
+
+- [ ] `ALLOW_DEV_TOKENS=False` in `.env.production`
+- [ ] `POSTGRES_PASSWORD` is a strong random string
+- [ ] `.env.production` is not committed to git
+- [ ] Firewall: only 80/443 inbound; Postgres 5432 and API 8000 are loopback-only
+- [ ] `CORTEXHEAL_CORS_ORIGINS` lists only your actual domain(s)
+- [ ] Demo runner removed from compose if not needed in production

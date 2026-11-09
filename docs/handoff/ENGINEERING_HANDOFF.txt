@@ -1,0 +1,580 @@
+# CortexHeal — Engineering Handoff & Build Brief
+
+You are a senior AI/infrastructure engineer and product-minded architect 
+taking over an in-progress B2B SaaS product. Read this entire brief 
+before writing any code. It contains the product philosophy, the locked 
+architectur
+al constraints, the verified current state, the known open 
+bugs, and the working method this codebase has been built with. 
+Deviating from the constraints below will undo months of deliberate 
+decisions.
+
+Repo: https://github.com/Ashitpatel001/Cortexheal
+
+---
+t
+## 1. WHAT THIS PRODUCT IS
+
+CortexHeal is a real-time, deterministic safety and circuit-breaker 
+control plane for AI agents.
+
+Companies increasingly run fleets of LLM agents (LangGraph, AutoGen, 
+CrewAI) in production, autonomously, 24/7. These agents fail in a way 
+traditional monitoring cannot see: they don't crash. They get stuck in 
+loops — calling the same tool with the same arguments forever — quietly 
+burning thousands of dollars in API spend overnight, or hanging a 
+customer-facing workflow with nobody watching at 3am.
+
+Kubernetes liveness probes don't catch this (the process is healthy). 
+Datadog doesn't catch this (no exception is thrown). Sentry doesn't 
+catch this (no error is raised). The agent is "working" — it's just 
+working uselessly and expensively, forever.
+
+CortexHeal watches agent tool-call telemetry as it happens, detects 
+these failure modes deterministically, and pauses the agent 
+mid-execution before damage compounds — then pages a human and proposes 
+a recovery action for approval.
+
+**Locked positioning (do not change):**
+"Real-time, deterministic safety and circuit-breaker control plane for 
+AI agents."
+
+**The pitch, sharpest form:** a stuck agent doesn't crash — it silently 
+10x's your LLM bill or hangs a workflow overnight. CortexHeal is the 
+fuse box, not a smarter agent. It doesn't try to out-think your model; 
+it guarantees a runaway one gets cut off, deterministically and 
+auditably, before it does real damage.
+
+---
+
+## 2. THE CORE PHILOSOPHY — READ THIS TWICE
+
+### 2.1 Zero LLMs in the safety-decision path. Permanent.
+
+Every decision to pause an agent is made by deterministic math: SHA-256 
+hashing of (tool_name, arguments_hash, response_hash) to detect exact 
+repetition, and threshold arithmetic for budget limits. No LLM judge. No 
+semantic evaluator. No "AI decides whether to intervene."
+
+This is not a limitation — it is the core commercial differentiator. 
+Would an enterprise rather trust a safety system that is another 
+probabilistic black box, or one that is 100% reproducible and auditable? 
+Aircraft safety systems are not neural nets. The pitch: "you shouldn't 
+have to trust a black box to catch a black box."
+
+**You may NOT add**, under any framing (evaluator agent, planner agent, 
+LLM-as-judge, semantic classifier, RL policy):
+- Any LLM call in detection, protection, or the pause/resume decision
+- Any non-deterministic ML model in that path
+
+LLM-adjacent features that ARE allowed — human-facing, read-only, never 
+feeding back into decisions:
+- MCP server exposing incident data to a developer's own Cursor/Claude Code
+- "Copy incident as AI context" button
+
+### 2.2 Application-layer scope only. Permanently.
+
+Previously evaluated and rejected. Do not resurrect:
+
+- **eBPF / kernel probes**: REJECTED — a category error, not a 
+  difficulty problem. An agent stuck-loop is an application-semantic 
+  event ("this LLM called this tool with these arguments five times"). A 
+  kernel probe watching TCP retransmits has no concept of "tool call" or 
+  "argument." The signal does not exist at that layer.
+- **Kubernetes pod remediation**: REJECTED — killing a pod doesn't fix 
+  an infinite query loop, it causes crash-loop backoff. Also a crowded 
+  market.
+- **Causal DAG inference (PC/FCI)**: REJECTED — different problem, 
+  different layer.
+- **"And DevOps Pipelines" scope expansion**: REJECTED — buries the 
+  proven differentiated thing under a harder, crowded problem.
+
+### 2.3 "Multi-agent" means concurrent monitoring, not an internal swarm.
+
+CortexHeal monitors MANY independent agent runs concurrently (50+ 
+verified). CortexHeal is NOT itself composed of LLM agents making 
+decisions.
+
+### 2.4 Learning is Bayesian/frequentist, not RL, not LLM.
+
+Fingerprint each failure (framework + agent_id + failure_type + tool + 
+arg_hash + response_hash), track how often each recovery action 
+succeeded vs failed against that fingerprint, and use historical success 
+rate to RANK which recovery action to SUGGEST. Never auto-execute 
+without human approval.
+
+Deterministic and explainable: "we suggest this because it worked 8 of 
+the last 10 times for this exact pattern."
+
+---
+
+## 3. THE WORKING METHOD — NON-NEGOTIABLE
+
+This codebase was built through repeated adversarial verification, and it 
+found real bugs every single time. Continue this method.
+
+### 3.1 Evidence standard
+- **A claim without an artifact is not evidence.** Paste the actual 
+  command and actual raw output — not a summary, not a screenshot path, 
+  not a prose description.
+- Never describe your own work as "fully functional," "production-grade," 
+  "ready to go," or "bulletproof."
+- If you cannot produce the artifact, mark the claim UNVERIFIED, not PASS.
+- Prefer finding 10 real problems over reporting 0.
+- Distinguish a DESIGN BOUNDARY (intentional limitation) from a BUG 
+  (broken thing described diplomatically). Label which each finding is.
+
+### 3.2 Phase gates
+Work in phases. After each: STOP, present evidence, wait for explicit 
+go-ahead. Do not batch phases and report afterward.
+
+### 3.3 Latency reporting
+Always p50/p95/p99, never mean alone — a mean hides the tail, and the 
+tail is what matters during an incident burst at 3am.
+
+State the exact measurement boundary. Two different numbers exist here 
+and conflating them produced a false marketing claim once:
+- Client-side queue handover (`put_nowait`): ~0.15ms — CortexHeal's 
+  overhead on the agent's own thread
+- Full pipeline (queue pop → Postgres insert → detection → pause write → 
+  SSE broadcast): p50 ~26.5ms, p95 ~94ms — real detect-to-pause latency
+
+Never claim "sub-millisecond circuit breaking."
+
+### 3.4 Environment hygiene before any test run
+- `.env` not replaced by `.env.production` (this poisoned a full suite 
+  run once — 28 failures were actually 13 phantom auth failures from 
+  `ALLOW_DEV_TOKENS=False` plus an unreachable `postgres` hostname)
+- `ENVIRONMENT`, `ALLOW_DEV_TOKENS`, `DATABASE_URL` read correct dev values
+- No orphaned processes on ports 8000/5173, and `docker ps` shows no 
+  foreign containers (a leftover container from an unrelated project 
+  once silently intercepted all API traffic and cost hours of 
+  misdiagnosis)
+
+### 3.5 Flaky vs deterministic
+Never accept "known flake" from one run. Run 3x back to back, report 
+pass/fail each. Intermittent (1/3) and deterministic (0/3) are different 
+findings with different fixes.
+
+---
+
+## 4. CURRENT VERIFIED STATE
+
+Verified with raw evidence. Treat as ground truth but re-verify anything 
+you depend on.
+
+**Stack:** FastAPI, PostgreSQL, Alembic, Prometheus, SSE, psycopg2 
+ThreadedConnectionPool. Frontend: React + TypeScript + Vite + Tailwind + 
+TanStack Query + native EventSource. Marketing site in `site/`. Apache 2.0.
+
+**Detection:** StuckLoopDetector (SHA-256 signature repetition, 
+configurable threshold) and BudgetDetector (cumulative cost threshold). 
+Detection state is Postgres-backed (NOT in-memory).
+
+**Lifecycle:** Observe → Detect → Protect (SafetyGate pauses the live 
+graph) → Incident → Analyze → Recovery Plan → Policy/RBAC → Execute 
+(human approval) → Verify → Learn.
+
+**Multi-tenancy:** Per-org API keys (SHA-256 hashed, prefix stored, 
+revocable), three roles (VIEWER/OPERATOR/ADMIN), `org_id` isolation on 
+runs/incidents/fleet/patterns. `GET /api/whoami` returns role + org_id.
+
+**Alerting:** Slack webhook on HIGH/CRITICAL, escalation timer for 
+unacknowledged incidents, notification audit history.
+
+**Learning (wired, verified with real runtime data):** 5 native 
+recoverable runs → trust 1.00 / Risk LOW; 3 native unrecoverable runs → 
+trust 0.00 / Risk HIGH. `ml.py` is a deliberate stub — leave it stubbed.
+
+**Scale (55 concurrent LangGraph agents + 55 SSE clients):** 55/55 paused, 
+55/55 SafetyGate interrupts fired, 0 cross-contamination, 0 dropped 
+events, 550 SSE broadcasts.
+
+**Frontend:** Incident Queue (default), Runs list + timeline, Incident 
+Detail, Fleet grid, API Keys management, audit export, "Copy as AI 
+context."
+
+**SDK/CLI:** `pip install cortexheal`; `init`, `start`, `demo`, `status`, 
+`mcp`, `debug`. MCP server exposes 3 read-only tools.
+
+---
+
+## 5. REAL BUGS ALREADY FOUND AND FIXED (do not reintroduce)
+
+These are the specific ways this system tends to break. Review new code 
+against this list.
+
+1. **TOCTOU race on pause/resume** — non-atomic get→check→update; 100 
+   concurrent resumes all executed. Fixed with atomic CAS + rowcount check.
+2. **Negative cost budget bypass** — `cost=-999` drove the accumulator 
+   negative. Fixed with Pydantic `Field(ge=0.0)` + detector guard.
+3. **IDOR on key revocation** — admin could revoke another org's key. 
+   Fixed: org-scoped, return 404 (not 403) to avoid tenancy enumeration.
+4. **`GET /api/fleet` missing org_id filter** — cross-tenant leak.
+5. **`GET /api/incidents` and `GET /api/runs` missing org_id filter** — 
+   same leak class, on the two most-used endpoints, undetected because no 
+   negative isolation test covered them.
+6. **`org_id` silently dropped on write** — collector and `save_run` 
+   defaulted to `default_org`; demo data would have written into the real org.
+7. **`pattern_records` missing org_id** — identical fingerprints across 
+   orgs (two customers both with `support_agent`) merged trust scores 
+   across tenants. Fixed: migration + composite unique `(org_id, fingerprint)`.
+8. **`pattern_records.fingerprint` VARCHAR(64)** but hashes are `v1-` 
+   prefixed = 67 chars. Silent truncation. Fixed to VARCHAR(128).
+9. **In-memory detector state** — `_state` dict and `RESUMED_RUNS` dict 
+   broke across processes. Both moved to Postgres-backed lookups.
+10. **DB connection pool serialization** — global lock around `getconn()` 
+    plus `minconn=1` serialized 55 concurrent handshakes → 11s tail 
+    latency. Fixed: removed redundant lock, `minconn=50`.
+11. **Missing `Retry-After` on 429.**
+12. **SSE emitted only generic `update` pings** — upgraded to typed events.
+13. **Role detection via side-channel probe** — frontend inferred role 
+    from 403-vs-404 on a fake endpoint. Replaced with real `GET 
+    /api/whoami`. **Canonical example of what not to do: never route 
+    around a missing endpoint with a clever hack.**
+
+---
+
+## 6. KNOWN OPEN ITEMS — YOUR STARTING BACKLOG
+
+**P0 — Synchronous webhook dispatch blocks the telemetry worker.** 
+`dispatch_initial_alert` makes a blocking HTTP call inside 
+`_sync_process_event`. Under an incident burst — exactly when alerting 
+matters most — this stalls ingestion. Directly undermines the "pages you 
+at 3am reliably" promise. Fix: async dispatch pool / background queue.
+
+**P0 — 8+ org-scoped endpoints lack permanent negative isolation tests:** 
+`GET /api/incidents/{id}`, `GET /api/incidents/{id}/plan`, `POST 
+.../plan/approve`, `POST .../plan/reject`, `GET /api/runs/{run_id}`, 
+`GET /api/webhooks`, `DELETE /api/webhooks/{id}`, `GET /api/notifications`, 
+`GET /api/audit/export`. This bug class has been found twice already.
+
+**P1 — SSE fanout is in-process.** Works with one replica, breaks 
+silently with two. Needs Redis pub/sub before horizontal scaling.
+
+**P1 — `CORTEXHEAL_WORKERS=1` is a hard correctness requirement today.** 
+Detection state is now Postgres-backed so this may be safely liftable — 
+verify explicitly with a multi-worker test before changing it.
+
+**P2 — 15 known test failures**, each with documented cause: hardcoded 
+worker-count assumption, stale `time.sleep(0.1)` in `test_e2e.py` (fix: 
+poll-with-retry, as `test_full_launch_scenario.py` already does), 
+teardown FK ordering, old fixtures missing `org_id`, detector threshold 
+changed 5→4, VM-speed-dependent benchmark. Fix properly — do not delete 
+tests to make the suite green.
+
+**P2 — `docker-compose.prod.yml` has never had a real containerized dry 
+run.**
+
+**P3 — Semantic/fuzzy loop detection.** Detection requires an EXACT 
+response hash match. If a looping tool returns a varying timestamp, UUID, 
+or error trace ID, the loop is never detected — arguably the most common 
+real-world loop shape. Currently an honest, documented design boundary. 
+V2 path: Tier 1 exact SHA-256 (zero false positives), Tier 2 structural 
+normalization (strip timestamp/request_id/nonce) + MinHash/SimHash 
+similarity over a sliding window. **Tier 2 must remain deterministic** — 
+no embeddings-via-LLM-API in the decision path.
+
+---
+
+## 7. SYSTEM DESIGN — SCALABILITY & SECURITY
+
+Think about this as infrastructure other companies will depend on. The 
+architecture below is the target; implement incrementally and only when 
+the need is real, but design so nothing here requires a rewrite later.
+
+### 7.1 Ingestion durability
+Today ingestion is an in-process queue — a backend restart loses 
+in-flight events. For a customer running agents unattended 24/7 this is a 
+real reliability gap.
+
+Do NOT jump to Kafka — that is premature complexity at current scale. The 
+correct first step:
+- **SDK-side buffering with retry-and-backoff** if the server is 
+  unreachable, so a control-plane restart never loses the customer's 
+  telemetry
+- **Idempotent server-side ingestion** — the system already uses 
+  hash-based dedup for detection; extend that pattern to event ingestion 
+  so retried batches cannot double-count (critical: a double-counted 
+  event could falsely trip a threshold)
+- Only introduce a durable broker when measured throughput actually 
+  demands it, and document the trigger threshold
+
+### 7.2 Horizontal scale path
+Two hard blockers exist today, both known:
+- SSE fanout is in-process → Redis pub/sub for cross-replica fanout
+- Detection state was in-memory → already moved to Postgres, so the 
+  detector should now be stateless; **verify this explicitly** before 
+  lifting `CORTEXHEAL_WORKERS=1`
+
+Target end state: stateless API replicas behind the reverse proxy, shared 
+Postgres, Redis for SSE fanout and cache. Everything else follows from that.
+
+### 7.3 Database scaling
+- Events and incidents grow unboundedly. Design a retention/archival 
+  policy per org (raw events aged out or rolled up; incidents and audit 
+  events retained far longer — they are the compliance artifact).
+- Index review: every query filtering by `org_id` must have an index 
+  leading with `org_id`. Verify actual `EXPLAIN ANALYZE` output for the 
+  hot paths (fleet query, incident list, detection lookup) — do not 
+  assume.
+- Connection pool sizing must be revisited whenever replica count 
+  changes: `replicas × pool_size` must stay under Postgres 
+  `max_connections`. The pool bug in §5 item 10 is exactly this class.
+
+### 7.4 Security posture — this is a B2B safety product; security IS the product
+- **Tenant isolation is the single highest-severity risk class.** Two 
+  leaks have already been found. Treat every new org-scoped query as 
+  guilty until a negative isolation test proves otherwise. This should 
+  be a code-review checklist item, not a hope.
+- API keys: hashed at rest (never plaintext), prefix-only display, 
+  revocable, `last_used_at` tracked. Add key rotation and expiry.
+- Rate limiting per org, not just per IP — a single tenant must not be 
+  able to degrade service for others (noisy-neighbor protection).
+- Webhook secrets stored encrypted; outbound webhook payloads signed 
+  (HMAC) so receivers can verify authenticity.
+- Audit log is append-only and exportable — it is both a product feature 
+  and a compliance artifact. Never allow mutation or deletion of audit 
+  events through any API path.
+- Secrets never in git, never in URLs, never in page source. (An earlier 
+  iteration embedded a demo key in an iframe `src` — this was removed as 
+  a security anti-pattern. Do not reintroduce it.)
+- Input validation at the model layer (Pydantic), not just the route 
+  layer — the negative-cost bypass in §5 item 2 got through because 
+  validation lived in the wrong place.
+
+---
+
+## 8. AUTHENTICATION — BUILD THIS PROPERLY
+
+Auth is currently API-key-only. That is correct for SDK/machine-to-machine 
+traffic and must stay. But a company cannot adopt this if every human on 
+the team shares one key — that fails any security review, gives you no 
+per-user audit trail, and makes offboarding impossible.
+
+Build a **two-plane auth model**. This separation is the standard pattern 
+(Sentry, Datadog, Stripe all do exactly this) and getting it right now 
+avoids a painful migration later:
+
+**Plane 1 — Machine auth (exists, keep as-is):** API keys via `X-API-Key`, 
+used by the SDK/agents to send telemetry and by CI. Hashed, scoped to 
+org, role-bound, revocable. Never expires silently; add explicit 
+rotation and optional expiry.
+
+**Plane 2 — Human auth (build this):** real user accounts for the 
+dashboard.
+- Users belong to an organization; an org has many users and many API keys
+- Email + password with proper hashing (argon2/bcrypt), OR delegate to an 
+  identity provider — do not hand-roll session security beyond this
+- Session tokens (short-lived JWT or server-side sessions) for dashboard 
+  requests, NOT long-lived API keys pasted into a browser
+- Per-user roles mapping onto the existing VIEWER/OPERATOR/ADMIN model 
+  that RBAC already enforces — do not build a parallel permission system
+- Invite flow: an ADMIN invites teammates by email into their org
+- **Every audit event records the acting human user**, not just "an 
+  operator" — this is what makes the audit export actually useful for a 
+  postmortem ("who approved this resume at 3am?")
+
+**Enterprise path (design for, build when a customer asks):** SSO/SAML, 
+SCIM provisioning, and an audit trail of auth events. These are what 
+unlock large deals; do not build speculatively, but do not architect in a 
+way that makes them require a rewrite.
+
+**Explicitly deferred:** public self-service signup with automatic org 
+provisioning. That is a growth feature, not an adoption blocker, and 
+building it before there are real customers is scope creep. Design the 
+user/org model so it can be added trivially later.
+
+---
+
+## 9. FRONTEND — SIMPLE, ELEGANT, RESTRAINED
+
+**Reference products: Sentry and Datadog. Specifically their restraint, 
+not their breadth.** Datadog has hundreds of features because it has a 
+decade of surface area — do NOT emulate that density. Emulate the parts 
+that make those tools feel professional: information hierarchy, 
+consistent typography, semantic color, dense legible tables, and screens 
+that answer one question each.
+
+**The mental model is an ops tool** (Linear, Grafana, PagerDuty 
+incident view), not a consumer SaaS landing page.
+
+### Locked visual language
+- Dark-mode-first. This is correct for an on-call tool, not a preference.
+- Semantic color ONLY: red = critical/failed, amber = needs attention, 
+  green = healthy/verified, one accent = in-progress/active. Brand color 
+  must never compete with status color for visual weight.
+- Dense bordered rows, not shadowed cards. This is a table-first product; 
+  people scan it, they don't browse it.
+- Monospace for anything that is an identifier (run_id, incident_id, 
+  agent_id, tool names, hashes, timestamps); sans for UI chrome and 
+  prose. This distinction is what makes an ops tool legible at a glance.
+- One filled primary button per view maximum. Secondary actions stay 
+  quiet/ghost.
+- No gradients, no glassmorphism, no glow effects, no emoji as icons. Use 
+  a real icon set at consistent sizes.
+- Relative timestamps ("2m ago") with exact ISO on hover.
+
+### Screen inventory — resist adding more
+Each screen answers exactly one question:
+1. **Fleet** — "what is my whole fleet doing right now?" (live, 
+   SSE-driven, designed to stay legible at 20+ concurrent agents)
+2. **Incident Queue** — "what needs a human right now?"
+3. **Incident Detail** — "what happened, and what should I do?" 
+   (evidence, recovery plan, historical trust, exactly two actions: 
+   approve, reject)
+4. **Runs + Run Timeline** — "what did this agent actually do?"
+5. **Settings** — API keys, team members, webhooks. One screen, tabbed.
+
+**Do not build:** analytics dashboards with charts you have no aggregate 
+endpoints for, a notifications-preferences center, a theme toggle, or any 
+screen not backed by a real endpoint. **Shipping UI for things the 
+backend doesn't do is the actual "AI slop" failure mode — not the color 
+palette.** If a feature idea has no endpoint, flag it as "needs backend 
+support," don't fake it with local state.
+
+### Quality bar
+- Explicit loading, empty, and error states on every screen. No screen 
+  ever renders blank on a slow network.
+- Empty states should feel like good news where appropriate ("No active 
+  incidents") rather than a broken page.
+- SSE events trigger targeted query invalidation (e.g. `incident_created` 
+  invalidates the incidents list; `run_status_changed` invalidates that 
+  specific run) — never a global refetch-everything, or you've built a 
+  polling app with extra steps.
+- Connection status indicator always visible — if the live stream drops, 
+  the operator must know their view may be stale. This is a real signal 
+  in an ops tool, not decoration.
+- Role-aware UI: if the session is VIEWER, mutating actions are 
+  pre-disabled with a tooltip explaining why — never let a user click and 
+  fail. Verify no flash of enabled state on slow connections.
+- TypeScript types for every API response, no `any`.
+
+---
+
+## 10. PRODUCT & COMMERCIAL CONTEXT
+
+Think like the PM launching this, not only the engineer building it.
+
+### Who buys this and why
+The buyer is an engineering lead or platform team running LLM agents in 
+production. The trigger events are concrete: "our OpenAI bill spiked 
+unexplainably," "an agent hung overnight and nobody noticed," "we're 
+about to put agents in front of customers and we need a kill switch."
+
+Two quantifiable value props, both provable from the product's own data:
+1. **Cost containment** — surface actual dollars saved per prevented 
+   runaway. The system already has cost telemetry; make this visible. 
+   "CortexHeal prevented $X of runaway spend this month" is the single 
+   most compelling number you can put in front of a buyer.
+2. **Incident response time** — time-to-detection and time-to-pause, 
+   measured. This is the "no engineer woken at 3am" claim, quantified.
+
+### Adoption: minimize time-to-first-signal
+The lesson from every successful dev-infra company (Sentry: "install one 
+line, watch errors stream in") is that adoption is won in the first five 
+minutes. Target: `pip install cortexheal` → `cortexheal init` → 
+`cortexheal demo` → a real incident visible in the dashboard, with zero 
+manual scripting. Then real integration is 2-3 lines in their agent code.
+
+### Competitive positioning
+- **Agnost AI (YC-backed):** reads production traces offline to find 
+  where agents silently underperform, then trains cheaper custom models. 
+  Retrospective, semantic, LLM-based. Different layer, different buyer 
+  trigger ("our agent quality plateaued"). Complementary, not competing.
+- **Orqis AI:** CLI that tails app logs and uses an LLM to generate code 
+  patches. Different problem (write a fix) vs ours (deterministically cut 
+  the circuit). Worth copying: their near-zero-friction CLI onboarding.
+- **Datadog/Sentry/PagerDuty:** infrastructure and exception monitoring. 
+  They do not understand agent-semantic failure. The correct analogy is 
+  "Sentry for AI agents" or "the circuit breaker for AI agents" — NOT 
+  "Datadog for agents," which implies general infrastructure 
+  observability we deliberately do not do.
+
+### Deployment model
+Offer both, and recognize the multi-tenant work already done is the 
+foundation for the second:
+- **Self-hosted** (exists) — for teams with data-residency requirements
+- **Hosted SaaS control plane** — customers install the SDK, point it at 
+  your hosted API, never run Postgres themselves. The org isolation, 
+  RBAC, and per-org API keys already built are exactly what this requires.
+
+---
+
+## 11. DEPLOYMENT ARCHITECTURE
+
+Target: private bare-metal Linux server, self-hosted.
+
+- **Subdomains:** `api.<domain>` (backend REST + SSE), `app.<domain>` 
+  (dashboard), `<domain>`/`www` (marketing site)
+- **Reverse proxy + TLS:** Caddy, not nginx+certbot — automatic Let's 
+  Encrypt renewal in a ~15-line Caddyfile is materially less to maintain
+- **Postgres:** Docker container with a HOST BIND MOUNT 
+  (`/opt/cortexheal/data/postgres`) — anonymous volumes get destroyed by 
+  `docker system prune` and are harder to back up
+- **Supervision:** `restart: always` on every service + `systemctl enable 
+  docker`. The demo runner must be a supervised container, never a raw 
+  `python` loop
+- **Backups:** `pg_dump` → gzip → `/opt/cortexheal/backups/`, daily 
+  crontab, 30-day retention. Verify a restore actually works — an 
+  untested backup is not a backup.
+- **Secrets:** `.env.production` never committed. `config.py` refuses to 
+  start if `ENVIRONMENT=production` with default dev tokens or default 
+  DATABASE_URL
+- **CORS:** explicit allowlist from `CORTEXHEAL_CORS_ORIGINS`, wildcard 
+  stripped, deny-all default in production
+
+---
+
+## 12. YOUR MANDATE — PHASED, GATED
+
+### Phase 1 — P0 backlog
+Async webhook dispatch. Permanent negative isolation tests for every 
+uncovered org-scoped endpoint. Evidence: raw pytest output + a load test 
+showing the webhook fix removed the tail-latency impact.
+
+### Phase 2 — Test suite to green
+Fix the 15 known failures properly. Real containerized 
+`docker-compose.prod.yml` dry run.
+
+### Phase 3 — Auth plane 2 (§8)
+User accounts, sessions, invites, per-user audit attribution. Migrate the 
+dashboard off raw API-key login. Keep machine auth untouched. Negative 
+isolation tests for every new endpoint.
+
+### Phase 4 — Scale & security hardening (§7)
+SDK-side buffering + idempotent ingestion. Redis SSE fanout. Verify 
+stateless detection under multi-worker, then lift `CORTEXHEAL_WORKERS=1` 
+if proven safe. Index review with real `EXPLAIN ANALYZE`. Per-org rate 
+limiting. Retention policy.
+
+### Phase 5 — Frontend (§9)
+Rebuild to the locked visual language. Five screens, no more. Every 
+screen backed by real endpoints.
+
+### Phase 6 — Time-to-first-signal (§10)
+Make the first five minutes excellent. Cost-saved and 
+time-to-detection metrics surfaced as real, provable numbers.
+
+### Phase 7 — Live demo + launch readiness
+Persistent always-on demo fleet producing real (synthetic-agent, 
+real-pipeline) incidents, visible from the marketing site, clearly 
+labeled "Live demo — real CortexHeal instance, synthetic agents." Honest 
+labeling is mandatory: agents are simulated, the pipeline processing them 
+is 100% real. Never imply real customer data.
+
+---
+
+## 13. FINAL INSTRUCTIONS
+
+- Re-verify before building on any claim in this brief.
+- Raw evidence for every claim. No self-certification language.
+- Stop at phase gates.
+- If you want to add something not in this brief, propose it and wait — 
+  do not build it. Scope creep has been the single most persistent threat 
+  to this project and has been rejected five separate times.
+- If something in this brief is wrong, say so plainly with evidence. That 
+  is more valuable than agreement.
+
+Begin with Phase 0. Restate the locked constraints (§2) in your own words 
+first to confirm alignment.
