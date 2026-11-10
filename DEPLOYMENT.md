@@ -1,47 +1,56 @@
-# CortexHeal — Bare-Metal Deployment Guide
+# CortexHeal — Enterprise Bare-Metal Deployment & Production Guide
 
-Single-server deployment: Docker Compose for backend services, Caddy for TLS and static file serving.
+This guide details the complete production deployment itinerary for **CortexHeal: The Automated Circuit Breaker & Safety Firewall for Autonomous AI Agents**.
 
-## Architecture
-
-```
-Internet → Caddy (443) ─┬─ /api/*      → api container :8000
-                         ├─ /health     → api container :8000
-                         ├─ /dashboard* → frontend/dist (static SPA)
-                         └─ /*          → site/dist (static marketing)
-```
-
-**Stack:** PostgreSQL 15 · Redis 7 · FastAPI + uvicorn (4 workers) · React 19 + Vite (static) · Caddy 2
+It covers both **Option 1: Docker Compose (All-in-One)** and **Option 2: Native Bare-Metal (Native PostgreSQL Binaries + Systemd)**.
 
 ---
 
-## Prerequisites
+## Architecture & Data Residency
 
-| Requirement | Minimum |
-|---|---|
-| OS | Ubuntu 22.04+ / Debian 12+ (any systemd Linux) |
-| Docker Engine | 24+ with `docker compose` v2 |
-| Caddy | 2.7+ |
-| RAM | 2 GB |
-| Disk | 20 GB free |
-| DNS | A record for your domain pointing at the server IP |
+```
+           COMPANY / CUSTOMER INFRASTRUCTURE                     CORTEXHEAL CONTROL PLANE
+    ┌───────────────────────────────────────────┐         ┌─────────────────────────────────────┐
+    │   AI Agent Application (K8s / Lambda)     │         │      Bare-Metal / VPC Server        │
+    │                                           │         │                                     │
+    │  Option A: Zero-Code Proxy Gateway        │         │  ┌───────────────────────────────┐  │
+    │    openai.base_url = "https://.../v1"     │────────┼─▶│ Caddy Reverse Proxy (443/TLS) │  │
+    │                                           │         │  └──────────────┬────────────────┘  │
+    │  Option B: Native Adapter (LangGraph)     │         │                 │                   │
+    │    SHA-256 State Hashing & Tokens         │────────┼─▶│ FastAPI Safety Engine (:8000) │  │
+    │                                           │         │  - Deterministic Breaker (≤24ms) │  │
+    │                                           │         │  - BYOK LLM Proxy Forwarder      │  │
+    │                                           │         │  - RuntimeCollector & SSE Bus    │  │
+    │                                           │         │  └──────────────┬────────────────┘  │
+    │  * Proprietary Prompts & Source Code      │         │                 │                   │
+    │  * Live Customer PII Data                 │         │  ┌──────────────▼────────────────┐  │
+    │  * Direct LLM API Keys (BYOK)             │         │  │ PostgreSQL 15/16 + Redis 7    │  │
+    │  * NEVER EXITS CUSTOMER VPC               │         │  │ /var/lib/postgresql/data      │  │
+    └───────────────────────────────────────────┘         └─────────────────────────────────────┘
+```
+
+### Where Data & Agents are Stored
+
+| Component | Location | What is Stored |
+|---|---|---|
+| **Agent Logic & Prompts** | Customer's Server / Worker | Python source files, prompts, vector database, LangGraph state graph. CortexHeal **never** hosts or executes raw agent logic. |
+| **Customer Private PII** | Customer's Datacenter | **Never transmitted** to CortexHeal. Only SHA-256 cryptographic fingerprints are sent. |
+| **CortexHeal PostgreSQL** | Control Plane Server (`cortexheal_db`) | `runs` (agent ID, framework, status, token counts, cost)<br>`events` (step transitions, SHA-256 state hashes)<br>`incidents` (stuck loop trips, budget exceedances)<br>`recovery_plans` (suggested corrective prompt modifications & audits)<br>`organizations`, `users`, `api_keys` (RBAC & multi-tenancy) |
+| **PostgreSQL On-Disk Location** | Bare-Metal Disk | Native binaries: `/var/lib/postgresql/15/main` (or custom mount `/mnt/nvme/postgres_data`).<br>Docker: `/opt/cortexheal/data/postgres`. |
 
 ---
 
-## 1. Server preparation
+## Deployment Option 1: Docker Compose (Fastest)
 
+### 1. Host Preparation
 ```bash
-# Host directories (Docker won't create bind-mount sources)
 sudo mkdir -p /opt/cortexheal/data/postgres
 sudo mkdir -p /opt/cortexheal/backups
 sudo chown -R 999:999 /opt/cortexheal/data/postgres
-
-# Ensure Docker starts on boot
 sudo systemctl enable docker
 ```
 
-## 2. Clone and configure
-
+### 2. Clone & Configure
 ```bash
 git clone <your-repo-url> /opt/cortexheal/app
 cd /opt/cortexheal/app
@@ -50,97 +59,142 @@ cp .env.production.example .env.production
 nano .env.production
 ```
 
-Edit `.env.production` — set at minimum:
+Key variables to set:
+- `POSTGRES_PASSWORD`: Strong 32+ character random string.
+- `DATABASE_URL`: `postgresql://cortexheal:${POSTGRES_PASSWORD}@postgres:5432/cortexheal_db`
+- `REDIS_URL`: `redis://redis:6379/0`
+- `CORTEXHEAL_CORS_ORIGINS`: `https://yourdomain.com,https://app.yourdomain.com`
+- `ALLOW_DEV_TOKENS`: `False`
 
-| Variable | Action |
-|---|---|
-| `POSTGRES_PASSWORD` | Strong random string (32+ chars) |
-| `DATABASE_URL` | Match the password in the connection string |
-| `CORTEXHEAL_CORS_ORIGINS` | Your actual domain: `https://yourdomain.com` |
-
-**Never commit `.env.production` to version control.**
-
-## 3. Build frontend assets
-
+### 3. Build Frontends
 ```bash
 # Dashboard SPA
 cd /opt/cortexheal/app/frontend
 npm ci && npm run build
-# → frontend/dist/
 
-# Marketing site
+# Marketing Site
 cd /opt/cortexheal/app/site
 npm ci && npm run build
-# → site/dist/
 ```
 
-If serving the dashboard under `/dashboard` (recommended), set `base` in
-`frontend/vite.config.ts` before building:
-
-```ts
-export default defineConfig({
-  base: '/dashboard/',
-  // ...rest of config
-})
-```
-
-## 4. Start the Docker stack
-
+### 4. Launch Stack
 ```bash
 cd /opt/cortexheal/app
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+The database migrations execute automatically on API boot via `init_db()`.
 
-Services started:
+---
 
-- **postgres** — PostgreSQL 15, loopback :5432, data persisted to `/opt/cortexheal/data/postgres`
-- **redis** — Redis 7 Alpine, internal network only
-- **api** — FastAPI on loopback :8000, 4 uvicorn workers
-- **demo-runner** — Synthetic demo data (remove from compose if not needed)
+## Deployment Option 2: Native Bare-Metal (Native PG Binaries + Systemd)
 
-**Migrations run automatically** — the API calls `init_db()` on startup, which
-applies yoyo migrations. No manual migration step needed.
+If you have native PostgreSQL and Redis binaries installed directly on your Linux host:
 
-Verify:
-
+### 1. Initialize PostgreSQL Cluster
 ```bash
-curl http://127.0.0.1:8000/health
-# {"status": "ok"}
+# Verify binaries
+psql --version  # e.g., PostgreSQL 15.x / 16.x
+
+# Switch to postgres user and create database + credentials
+sudo -u postgres psql <<EOF
+CREATE USER cortexheal WITH ENCRYPTED PASSWORD 'your_super_strong_password';
+CREATE DATABASE cortexheal_db OWNER cortexheal;
+GRANT ALL PRIVILEGES ON DATABASE cortexheal_db TO cortexheal;
+EOF
 ```
 
-## 5. Configure Caddy
+Data files will reside in the native directory configured by your OS package manager:
+- Ubuntu/Debian: `/var/lib/postgresql/15/main`
+- RHEL/Rocky: `/var/lib/pgsql/15/data`
 
-Install Caddy:
+### 2. Set Up Python Environment & Apply Schema
+```bash
+cd /opt/cortexheal/app
 
+# Create virtual environment
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -U pip setuptools wheel
+pip install -r requirements.txt
+pip install -e .
+
+# Initialize schema and run migrations
+python -c "from cortexheal.storage.postgres import init_db; init_db()"
+```
+
+### 3. Create Systemd Service for CortexHeal API
+Create `/etc/systemd/system/cortexheal.service`:
+
+```ini
+[Unit]
+Description=CortexHeal Autonomous AI Circuit Breaker Control Plane
+After=network.target postgresql.service redis.service
+Requires=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/cortexheal/app
+EnvironmentFile=/opt/cortexheal/app/.env.production
+ExecStart=/opt/cortexheal/app/.venv/bin/uvicorn cortexheal.server.api:app --host 127.0.0.1 --port 8000 --workers 4 --proxy-headers
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now cortexheal
+sudo systemctl status cortexheal
+```
+
+---
+
+## Reverse Proxy & TLS Setup (Caddy)
+
+Caddy automatically provisions free SSL/TLS certificates via Let's Encrypt and handles HTTP/2 / HTTP/3.
+
+### 1. Install Caddy
 ```bash
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | \
-  sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | \
-  sudo tee /etc/apt/sources.list.d/caddy-stable.list
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update && sudo apt install caddy
 ```
 
-Create `/etc/caddy/Caddyfile` (replace `yourdomain.com`):
+### 2. Configure `/etc/caddy/Caddyfile`
+Copy [`deploy/Caddyfile`](file:///D:/Cortexheal-20261002T102412Z-1-001/Cortexheal/deploy/Caddyfile) to `/etc/caddy/Caddyfile`:
 
 ```caddyfile
-yourdomain.com {
-    # API reverse proxy
+yourdomain.com, www.yourdomain.com {
+    # 1. AI Circuit Breaker Proxy Gateway (Zero-Code OpenAI/Anthropic Drop-in)
+    handle /v1/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    # 2. Control Plane REST API
     handle /api/* {
         reverse_proxy 127.0.0.1:8000
     }
+
+    # 3. Health & Uptime Probe
     handle /health {
         reverse_proxy 127.0.0.1:8000
     }
 
-    # SSE — disable response buffering
-    handle /api/sse* {
+    # 4. Real-Time Telemetry SSE Stream (Unbuffered)
+    handle /api/stream* {
         reverse_proxy 127.0.0.1:8000 {
             flush_interval -1
         }
     }
 
-    # Dashboard SPA
+    # 5. Dashboard SPA (/dashboard)
     handle /dashboard* {
         root * /opt/cortexheal/app/frontend/dist
         uri strip_prefix /dashboard
@@ -148,7 +202,7 @@ yourdomain.com {
         file_server
     }
 
-    # Marketing site (catch-all)
+    # 6. Public Marketing Site (Catch-all)
     root * /opt/cortexheal/app/site/dist
     try_files {path} /index.html
     file_server
@@ -157,68 +211,52 @@ yourdomain.com {
 }
 ```
 
-Reload:
-
+Reload Caddy:
 ```bash
 sudo systemctl reload caddy
 ```
 
-Caddy auto-provisions TLS via Let's Encrypt. Site is now live at `https://yourdomain.com`.
+---
 
-## 6. Create admin user
+## Verifying the Production Deployment
 
-The API ships with no default accounts. Create the first org and admin:
-
-```bash
-docker compose -f docker-compose.prod.yml exec api \
-  python scripts/init_demo_org.py
-```
-
-Or use the programmatic approach from a Python shell inside the container.
-
-## 7. Scheduled backups
-
-Add to root crontab (`sudo crontab -e`):
-
-```cron
-0 3 * * * docker exec cortexheal-app-postgres-1 \
-  pg_dump -U cortexheal cortexheal_db | \
-  gzip > /opt/cortexheal/backups/db-$(date +\%Y\%m\%d).sql.gz
-
-0 4 * * * find /opt/cortexheal/backups -name "db-*.sql.gz" -mtime +30 -delete
-```
-
-## 8. Monitoring
-
-| Endpoint | Purpose |
-|---|---|
-| `GET /health` | Returns `{"status": "ok"}` when API + DB are healthy |
-| `GET /api/metrics` | Incident counts, detection latency p50/p95, cost data |
-| Docker logs | `docker compose -f docker-compose.prod.yml logs -f api` |
-
-Point your uptime monitor (UptimeRobot, Healthchecks.io) at `https://yourdomain.com/health`.
-
-## 9. Updating
+Run these validation probes:
 
 ```bash
-cd /opt/cortexheal/app
-git pull origin main
+# 1. Check health
+curl -I https://yourdomain.com/health
+# Expected: HTTP/2 200 OK {"status": "ok"}
 
-# Rebuild frontends
-cd frontend && npm ci && npm run build && cd ..
-cd site && npm ci && npm run build && cd ..
+# 2. Check Gateway Circuit Breaker
+curl -X POST https://yourdomain.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-test" \
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "ping"}]}'
 
-# Rebuild and restart API (migrations run automatically)
-docker compose -f docker-compose.prod.yml up -d --build
-
-# Caddy serves static files — no restart needed
+# 3. Check SSE Real-time Bus
+curl -N https://yourdomain.com/api/stream
 ```
 
-## Security checklist
+---
 
-- [ ] `ALLOW_DEV_TOKENS=False` in `.env.production`
-- [ ] `POSTGRES_PASSWORD` is a strong random string
-- [ ] `.env.production` is not committed to git
-- [ ] Firewall: only 80/443 inbound; Postgres 5432 and API 8000 are loopback-only
-- [ ] `CORTEXHEAL_CORS_ORIGINS` lists only your actual domain(s)
-- [ ] Demo runner removed from compose if not needed in production
+## Automated Database Backups
+
+Create `/etc/cron.daily/cortexheal-backup`:
+
+```bash
+#!/bin/bash
+BACKUP_DIR="/opt/cortexheal/backups"
+TIMESTAMP=$(date +\%Y\%m\%d_\%H\%M\%S)
+mkdir -p "$BACKUP_DIR"
+
+# For native PG:
+sudo -u postgres pg_dump cortexheal_db | gzip > "$BACKUP_DIR/db_$TIMESTAMP.sql.gz"
+
+# Retain 30 days of archives
+find "$BACKUP_DIR" -name "db_*.sql.gz" -mtime +30 -delete
+```
+
+Make it executable:
+```bash
+sudo chmod +x /etc/cron.daily/cortexheal-backup
+```
