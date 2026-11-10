@@ -957,7 +957,17 @@ app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
 
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str):
-    # Fallback to index.html for SPA routing
+    # Check if a static file directly exists (e.g., assets/index.js, favicon.svg)
+    if full_path:
+        requested_file = os.path.abspath(os.path.join(frontend_dir, full_path))
+        base_dir = os.path.abspath(frontend_dir)
+        try:
+            if os.path.commonpath([base_dir, requested_file]) == base_dir and os.path.isfile(requested_file):
+                return FileResponse(requested_file)
+        except ValueError:
+            pass
+
+    # Fallback to index.html for client-side SPA routing
     index_path = os.path.join(frontend_dir, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)

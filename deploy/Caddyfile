@@ -8,33 +8,65 @@
 # Replace YOURDOMAIN.com globally before reloading Caddy!
 # ═══════════════════════════════════════════════════════════
 
-# ── Backend API & SSE ─────────────────────────────────────
-api.YOURDOMAIN.com {
-    # Proxy to the local docker-compose API container
-    reverse_proxy 127.0.0.1:8000 {
-        # Caddy automatically flushes for Server-Sent Events,
-        # no explicit unbuffering required for /api/stream.
+# ── OPTION A: Unified Single-Domain Deployment (Recommended) ─────────
+YOURDOMAIN.com, www.YOURDOMAIN.com {
+    # 1. AI Circuit Breaker Proxy Gateway (Zero-Code OpenAI/Anthropic Drop-in)
+    handle /v1/* {
+        reverse_proxy 127.0.0.1:8000
     }
+
+    # 2. Control Plane REST API
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    # 3. Health & Uptime Probe
+    handle /health {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    # 4. Real-Time Telemetry SSE Stream (Unbuffered)
+    handle /api/stream* {
+        reverse_proxy 127.0.0.1:8000 {
+            flush_interval -1
+        }
+    }
+
+    # 5. Dashboard SPA (/dashboard)
+    handle /dashboard* {
+        root * /opt/cortexheal/app/frontend/dist
+        uri strip_prefix /dashboard
+        try_files {path} /index.html
+        file_server
+    }
+
+    # 6. Public Marketing & Safety Docs Site (Catch-all)
+    root * /opt/cortexheal/app/site/dist
+    try_files {path} /index.html
+    file_server
+
+    encode gzip zstd
 }
 
-# ── React Dashboard ───────────────────────────────────────
-app.YOURDOMAIN.com {
-    # If the frontend is built statically:
-    # root * /opt/cortexheal/repo/frontend/dist
-    # file_server
-    # try_files {path} /index.html
-    
-    # OR if running a Node/Vite server (adjust port as needed):
-    reverse_proxy 127.0.0.1:3000
-}
-
-# ── Marketing Site ────────────────────────────────────────
-www.YOURDOMAIN.com, YOURDOMAIN.com {
-    # If the marketing site is built statically:
-    # root * /opt/cortexheal/repo/site/dist
-    # file_server
-    # try_files {path} /index.html
-    
-    # OR if reverse proxying to a Next.js/Vite SSR container:
-    reverse_proxy 127.0.0.1:3001
-}
+# ── OPTION B: Dedicated Subdomain Architecture ───────────────────────
+# (Uncomment below if using api.YOURDOMAIN.com and app.YOURDOMAIN.com)
+#
+# api.YOURDOMAIN.com {
+#     reverse_proxy 127.0.0.1:8000 {
+#         flush_interval -1
+#     }
+# }
+#
+# app.YOURDOMAIN.com {
+#     root * /opt/cortexheal/app/frontend/dist
+#     try_files {path} /index.html
+#     file_server
+#     encode gzip zstd
+# }
+#
+# YOURDOMAIN.com, www.YOURDOMAIN.com {
+#     root * /opt/cortexheal/app/site/dist
+#     try_files {path} /index.html
+#     file_server
+#     encode gzip zstd
+# }

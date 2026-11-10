@@ -531,19 +531,19 @@ def test_p3_7_concurrent_resume():
     def do_resume(idx):
         try:
             pc = ProtectionController()
-            with patch('cortexheal.protection.controller.get_run', return_value=mock_run), \
-                 patch('cortexheal.protection.controller.update_run_status', side_effect=mock_update_status), \
-                 patch('cortexheal.protection.controller.save_audit_event'):
-                pc.resume("concurrent_resume", actor_id=f"user_{idx}")
+            pc.resume("concurrent_resume", actor_id=f"user_{idx}")
         except Exception as e:
             with lock:
                 errors.append(traceback.format_exc())
     
-    threads = [threading.Thread(target=do_resume, args=(i,)) for i in range(100)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join(timeout=10)
+    with patch('cortexheal.protection.controller.get_run', return_value=mock_run), \
+         patch('cortexheal.protection.controller.update_run_status', side_effect=mock_update_status), \
+         patch('cortexheal.protection.controller.save_audit_event'):
+        threads = [threading.Thread(target=do_resume, args=(i,)) for i in range(100)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=10)
     
     raw = f"update_count={update_count[0]}, errors={len(errors)}, error_samples={errors[:3]}"
     # BUG: All 100 see status='paused' and ALL call update_run_status.
