@@ -66,7 +66,7 @@ export function SignUpModal({ isOpen, onClose, defaultPlan = "Developer" }: Sign
                   {step === "form" ? "Provision CortexHeal Key" : "Your API Key is Ready"}
                 </h3>
                 <p className="text-[11px] text-slate-500 font-mono">
-                  Plan: {defaultPlan} • Air-Gapped Zero Egress
+                  100% Free & Open Source • Zero Telemetry Egress
                 </p>
               </div>
             </div>

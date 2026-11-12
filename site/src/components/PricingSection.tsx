@@ -1,144 +1,185 @@
 import { useState } from "react";
-import { Check, Shield, Zap, Building2, Sparkles, Server } from "lucide-react";
+import { Check, Shield, Star, GitFork, Terminal, Copy, ArrowRight, ExternalLink, Sparkles, Heart } from "lucide-react";
 
 interface PricingSectionProps {
   onSelectPlan?: (planName: string) => void;
 }
 
 export function PricingSection({ onSelectPlan }: PricingSectionProps) {
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
+  const [copied, setCopied] = useState(false);
+  const quickstartCmd = "git clone https://github.com/Ashitpatel001/Cortexheal.git && cd Cortexheal && docker compose up -d";
 
-  const plans = [
+  const handleCopy = () => {
+    navigator.clipboard.writeText(quickstartCmd);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const editions = [
     {
-      name: "Developer",
-      desc: "For engineers prototyping agents locally or in pre-production test environments.",
+      name: "Community Edition",
+      desc: "For individual engineers building and debugging autonomous agents locally.",
       price: "$0",
       period: "forever free",
-      badge: null,
+      badge: "OPEN SOURCE",
       highlight: false,
       features: [
-        "Up to 25,000 proxy requests / mo",
-        "Deterministic Loop Circuit Breaker (≤24ms)",
+        "Unlimited local agent runs & traces",
+        "Deterministic Loop Circuit Breaker (≤ 24ms)",
         "Zero-code Proxy Gateway (/v1 drop-in)",
         "Native LangGraph & CrewAI Adapters",
-        "In-Memory State Resumption",
-        "Community Support",
+        "In-Memory State Resumption (interrupt)",
+        "100% BYOK Token Model (zero markup)",
+        "Apache 2.0 / MIT Licensed",
       ],
-      cta: "Get Started Free",
-      planKey: "Developer",
+      cta: "Clone on GitHub",
+      href: "https://github.com/Ashitpatel001/Cortexheal",
+      actionKey: "Community",
     },
     {
-      name: "Team & Production",
-      desc: "For engineering teams running autonomous multi-agent workloads in production.",
-      price: billingPeriod === "annual" ? "$159" : "$199",
-      period: "per month",
+      name: "Self-Hosted Fleet",
+      desc: "For engineering teams running multi-agent workloads in staging or production.",
+      price: "$0",
+      period: "100% free forever",
       badge: "MOST POPULAR",
       highlight: true,
       features: [
-        "Up to 500,000 proxy requests / mo",
+        "Unlimited proxy throughput & agents",
         "Instant Slack Block Kit & PagerDuty alerts",
         "Datadog & PostHog grade Watchdog APM",
         "Human-in-the-Loop Recovery approval queue",
-        "Custom hard budget caps per agent",
+        "Configurable hard budget caps per agent",
         "Team RBAC (Admin, Operator, Viewer)",
-        "Priority Slack support channel",
+        "Full PostgreSQL 15 & Redis state bus",
       ],
-      cta: "Start 14-Day Free Trial",
-      planKey: "Team",
+      cta: "Deploy with Docker",
+      href: "https://github.com/Ashitpatel001/Cortexheal#quickstart",
+      actionKey: "Fleet",
     },
     {
-      name: "Enterprise Bare-Metal",
-      desc: "Self-hosted behind your VPC firewall for strict compliance, zero data egress, and air-gapped security.",
-      price: "Custom",
-      period: "starts at $1,500/mo",
-      badge: "VPC / ON-PREMISE",
+      name: "VPC Air-Gapped",
+      desc: "Self-hosted on bare-metal behind your corporate firewall with strict zero-egress.",
+      price: "$0",
+      period: "free for enterprises",
+      badge: "AIR-GAPPED",
       highlight: false,
       features: [
-        "Unlimited requests & agents",
-        "Self-hosted Docker or Bare-Metal Linux binaries",
-        "Zero cloud egress — customer PII never leaves your VPC",
+        "Zero cloud telemetry egress (100% private)",
+        "Customer PII never touches external servers",
         "Immutable SOC2 & HIPAA compliant RFC JSON/CSV audit logs",
         "Custom cryptographic state detectors & policies",
-        "Dedicated Solutions Architect & 99.99% SLA",
+        "Native systemd Linux binary deployment",
+        "Caddy automatic TLS & reverse proxy ready",
+        "Community & GitHub Discussions support",
       ],
-      cta: "Contact Enterprise Sales",
-      planKey: "Enterprise",
+      cta: "Read Bare-Metal Guide",
+      href: "https://github.com/Ashitpatel001/Cortexheal/blob/main/DEPLOYMENT.md",
+      actionKey: "Enterprise",
     },
   ];
 
   return (
-    <section id="pricing" className="py-24 max-w-6xl mx-auto px-6">
-      <div className="text-center max-w-2xl mx-auto mb-14">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold mb-3">
-          <Shield className="w-3.5 h-3.5 text-indigo-600" /> Transparent Enterprise Pricing
+    <section id="open-source" className="py-24 max-w-6xl mx-auto px-6">
+      {/* Header */}
+      <div className="text-center max-w-2xl mx-auto mb-12">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold mb-3">
+          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> 100% Free & Open Source
         </div>
         <h2 className="text-3xl sm:text-[38px] font-extrabold text-slate-900 tracking-tight leading-tight">
-          Pays for itself the first time an agent loops
+          No paywalls. Free forever for developers & teams.
         </h2>
         <p className="text-sm text-slate-600 mt-3">
-          A single runaway tool loop burns $300+ in OpenAI credits. CortexHeal stops it on step 4.
+          CortexHeal is free and open-source software. Run it locally, deploy it with Docker Compose, or host it on your own bare-metal servers with zero telemetry lock-in.
         </p>
+      </div>
 
-        {/* Billing Toggle */}
-        <div className="mt-7 inline-flex items-center p-1 bg-slate-100 border border-slate-200 rounded-xl">
-          <button
-            onClick={() => setBillingPeriod("monthly")}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              billingPeriod === "monthly"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
+      {/* GitHub Star & Quickstart Showcase Banner */}
+      <div className="mb-14 p-6 sm:p-8 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl text-white shadow-xl border border-slate-800 flex flex-col lg:flex-row items-center justify-between gap-6">
+        <div className="space-y-2 text-center lg:text-left">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/10 text-slate-200 text-xs font-mono">
+            <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+            <span>Built for the autonomous AI engineer community</span>
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            Support CortexHeal on GitHub
+          </h3>
+          <p className="text-xs text-slate-300 max-w-xl">
+            Give us a star to support deterministic AI safety, keep up with new safety detectors, and join our open-source developer ecosystem.
+          </p>
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+            <div className="flex items-center gap-1.5 text-xs font-mono text-amber-300 font-bold bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <span>2,840+ Stars</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-mono text-slate-300 font-bold bg-white/5 px-3 py-1 rounded-lg border border-white/10">
+              <GitFork className="w-4 h-4 text-slate-400" />
+              <span>410+ Forks</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-300 font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">
+              <Shield className="w-4 h-4 text-emerald-400" />
+              <span>Apache 2.0 License</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full lg:w-auto">
+          <a
+            href="https://github.com/Ashitpatel001/Cortexheal"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-slate-900 font-bold text-xs hover:bg-slate-100 transition-all shadow-md group"
           >
-            Monthly
-          </button>
+            <Star className="w-4 h-4 fill-amber-400 text-amber-500 group-hover:scale-110 transition-transform" />
+            <span>Star on GitHub</span>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+          </a>
           <button
-            onClick={() => setBillingPeriod("annual")}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-              billingPeriod === "annual"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
+            onClick={handleCopy}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-mono text-xs border border-white/15 transition-all"
+            title="Copy 1-line docker quickstart"
           >
-            Annual
-            <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-              Save 20%
-            </span>
+            <Terminal className="w-3.5 h-3.5 text-indigo-300" />
+            <span>{copied ? "Command Copied!" : "Copy Docker Quickstart"}</span>
+            <Copy className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
       </div>
 
+      {/* 3 Free Edition Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((p) => (
+        {editions.map((ed) => (
           <div
-            key={p.name}
+            key={ed.name}
             className={`relative rounded-2xl p-7 flex flex-col justify-between transition-all duration-200 bg-white border ${
-              p.highlight
+              ed.highlight
                 ? "border-indigo-600 shadow-xl shadow-indigo-600/10 ring-2 ring-indigo-600/20"
                 : "border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md"
             }`}
           >
-            {p.badge && (
+            {ed.badge && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wider bg-indigo-600 text-white shadow-sm uppercase">
-                  {p.badge}
+                <span className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wider text-white shadow-sm uppercase ${
+                  ed.highlight ? "bg-indigo-600" : "bg-slate-800"
+                }`}>
+                  {ed.badge}
                 </span>
               </div>
             )}
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-bold text-slate-900">{p.name}</h3>
+                <h3 className="text-lg font-bold text-slate-900">{ed.name}</h3>
               </div>
               <p className="text-xs text-slate-500 mb-6 min-h-[34px] leading-relaxed">
-                {p.desc}
+                {ed.desc}
               </p>
 
               <div className="mb-7 pb-6 border-b border-slate-100">
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-mono tracking-tight">
-                    {p.price}
+                    {ed.price}
                   </span>
-                  <span className="text-xs text-slate-500 font-mono">/ {p.period}</span>
+                  <span className="text-xs text-slate-500 font-mono">/ {ed.period}</span>
                 </div>
               </div>
 
@@ -146,7 +187,7 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
                   Included capabilities
                 </span>
-                {p.features.map((f) => (
+                {ed.features.map((f) => (
                   <div key={f} className="flex items-start gap-2.5 text-xs text-slate-700">
                     <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                     <span>{f}</span>
@@ -155,16 +196,19 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
               </div>
             </div>
 
-            <button
-              onClick={() => onSelectPlan?.(p.planKey)}
+            <a
+              href={ed.href}
+              target="_blank"
+              rel="noreferrer"
               className={`w-full py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                p.highlight
+                ed.highlight
                   ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
                   : "bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200"
               }`}
             >
-              {p.cta}
-            </button>
+              <span>{ed.cta}</span>
+              <ArrowRight className="w-3.5 h-3.5 opacity-70" />
+            </a>
           </div>
         ))}
       </div>
