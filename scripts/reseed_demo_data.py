@@ -13,11 +13,16 @@ from cortexheal.storage.postgres import (
     get_connection, init_db, save_run, save_incident, save_audit_event,
     save_recovery_plan, save_api_key, save_webhook_config, save_notification_record
 )
+from cortexheal.storage.auth_store import (
+    create_organization, create_user_account, get_organization, get_user_by_email
+)
 from cortexheal.models.run import AgentRun
 from cortexheal.models.incident import Incident
 from cortexheal.models.protection import AuditEvent
 from cortexheal.models.recovery import RecoveryPlan, RecoveryAction
-from cortexheal.models.auth import ApiKey, hash_key
+from cortexheal.models.auth import (
+    ApiKey, hash_key, Organization, UserAccount, hash_password
+)
 from cortexheal.models.alerting import WebhookConfig, NotificationRecord
 
 def reseed():
@@ -31,24 +36,56 @@ def reseed():
     print("\n[Step 1] Cleaning existing database tables...")
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("TRUNCATE TABLE notification_records, webhook_configs, audit_events, recovery_plans, incidents, events, runs, api_keys CASCADE;")
+            cur.execute("""
+                TRUNCATE TABLE 
+                    notification_records, webhook_configs, audit_events, 
+                    recovery_plans, incidents, events, runs, api_keys,
+                    sessions, invitations, users, organizations 
+                CASCADE;
+            """)
             conn.commit()
     print("         All tables truncated cleanly.")
+
+    # 1.1 Seed Organizations and Default Users
+    print("\n[Step 1.1] Seeding Organization and Human Admin Accounts...")
+    org = create_organization(Organization(
+        org_id="default_org",
+        name="Fleet Production Corp",
+        created_at=datetime.now(timezone.utc)
+    ))
+    admin_user = create_user_account(UserAccount(
+        org_id="default_org",
+        email="admin@cortexheal.com",
+        password_hash=hash_password("admin123"),
+        role="ADMIN",
+        status="ACTIVE"
+    ))
+    demo_user = create_user_account(UserAccount(
+        org_id="default_org",
+        email="demo@cortexheal.com",
+        password_hash=hash_password("demo123"),
+        role="VIEWER",
+        status="ACTIVE"
+    ))
+    print(f"         Seeded Org: {org.name} ({org.org_id})")
+    print(f"         Seeded Admin: {admin_user.email} (pwd: admin123)")
+    print(f"         Seeded Demo:  {demo_user.email} (pwd: demo123)")
 
     # 2. Seed Multi-Tenant API Keys
     print("\n[Step 2] Seeding Tenant API Keys...")
     keys = [
         ("ctx_admin_prod_corp_001", "Enterprise Root Admin", "ADMIN", "default_org"),
         ("ctx_operator_sre_team_002", "SRE On-Call Operator", "OPERATOR", "default_org"),
-        ("ctx_viewer_security_audit_003", "SOC2 Auditor Key", "VIEWER", "default_org")
+        ("ctx_viewer_security_audit_003", "SOC2 Auditor Key", "VIEWER", "default_org"),
+        ("ctx_viewer_public_demo_key_12345", "Public Sandbox Demo Key", "VIEWER", "default_org")
     ]
-    for raw_k, name, role, org in keys:
+    for raw_k, name, role, org_id in keys:
         save_api_key(ApiKey(
             key_id=str(uuid.uuid4()),
             key_hash=hash_key(raw_k),
             key_prefix=raw_k[:12] + "...",
             name=name,
-            org_id=org,
+            org_id=org_id,
             role=role,
             created_at=datetime.now(timezone.utc)
         ))

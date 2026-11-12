@@ -161,6 +161,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
                   {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {loading ? "Signing in..." : "Sign in"}
                 </button>
+                <div className="flex items-center justify-between text-[11px] text-text-muted font-mono pt-1">
+                  <span>Quick Admin:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail("admin@cortexheal.com");
+                      setPassword("admin123");
+                    }}
+                    className="text-accent hover:underline hover:text-accent-hover font-semibold"
+                  >
+                    admin@cortexheal.com / admin123
+                  </button>
+                </div>
               </form>
             ) : (
               <form
