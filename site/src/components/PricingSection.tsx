@@ -1,142 +1,172 @@
-import { Check, ShieldCheck, Zap, Server } from "lucide-react";
+import { useState } from "react";
+import { Check, Shield, Zap, Building2, Sparkles, Server } from "lucide-react";
 
 interface PricingSectionProps {
-  onSelectPlan: (plan: string) => void;
+  onSelectPlan?: (planName: string) => void;
 }
 
 export function PricingSection({ onSelectPlan }: PricingSectionProps) {
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
+
   const plans = [
     {
       name: "Developer",
+      desc: "For engineers prototyping agents locally or in development environments.",
       price: "$0",
-      period: "forever",
-      description: "Ideal for engineers prototyping local agent graphs with deterministic safety.",
+      period: "forever free",
+      badge: null,
+      highlight: false,
       features: [
-        "Up to 10 concurrent agents",
-        "Deterministic stuck loop detection",
-        "Deterministic budget ceilings ($1.00+)",
-        "Zero LLMs in decision path (~25ms p50)",
-        "LangGraph, CrewAI & AutoGen adapters",
-        "Local Docker Compose & Bare Metal",
-        "Community support & docs",
+        "Up to 25,000 requests / mo",
+        "Deterministic Loop Circuit Breaker (≤24ms)",
+        "Zero-code Proxy Gateway (/v1)",
+        "Native LangGraph & CrewAI Adapters",
+        "In-Memory State Resumption",
+        "Community Support",
       ],
       cta: "Get Started Free",
-      highlighted: false,
+      planKey: "Developer",
     },
     {
-      name: "Team & Pro",
-      price: "$49",
+      name: "Team & Production",
+      desc: "For engineering teams running autonomous multi-agent workloads in production.",
+      price: billingPeriod === "annual" ? "$159" : "$199",
       period: "per month",
-      description: "For engineering teams running production agent fleets requiring live watchdog alerts.",
+      badge: "MOST POPULAR",
+      highlight: true,
       features: [
-        "Up to 50 concurrent agents",
-        "Real-time SSE event bus streaming",
-        "Slack, PagerDuty & Opsgenie webhooks",
-        "Human-in-the-loop recovery approval",
-        "Multi-operator RBAC (Viewer, Operator, Admin)",
-        "Automated pattern learning engine",
-        "Audit trail export (CSV / JSON)",
-        "Priority engineering support",
+        "Up to 500,000 requests / mo",
+        "Instant Slack Block Kit & PagerDuty alerts",
+        "Datadog & PostHog grade Watchdog APM",
+        "Human-in-the-Loop Recovery approval queue",
+        "Custom hard budget caps per agent",
+        "Team RBAC (Admin, Operator, Viewer)",
+        "Priority Slack support channel",
       ],
-      cta: "Start 14-Day Pro Trial",
-      highlighted: true,
-      badge: "Most Popular",
+      cta: "Start 14-Day Free Trial",
+      planKey: "Team",
     },
     {
-      name: "Enterprise Bare Metal",
-      price: "$499",
-      period: "per instance / mo",
-      description: "Self-hosted bare-metal deployment with zero cloud egress for high-compliance workloads.",
+      name: "Enterprise Bare-Metal",
+      desc: "Self-hosted behind your VPC firewall for strict compliance, zero data egress, and air-gapped security.",
+      price: "Custom",
+      period: "starts at $1,500/mo",
+      badge: "VPC / ON-PREMISE",
+      highlight: false,
       features: [
-        "Unlimited concurrent agent fleets",
-        "Air-gapped bare metal deployment",
-        "Zero data leaves your datacenter",
-        "Direct Caddy TLS + Systemd orchestration",
-        "Custom SHA-256 state matching policies",
-        "Dedicated PostgreSQL & Redis tuning",
-        "Custom alerting webhooks & SOAR integration",
-        "24/7 dedicated engineering SLA",
+        "Unlimited requests & agents",
+        "Self-hosted Docker or Bare-Metal Linux binaries",
+        "Zero cloud egress — customer PII never leaves your VPC",
+        "Immutable SOC2 & HIPAA compliant RFC JSON/CSV audit logs",
+        "Custom cryptographic state detectors & policies",
+        "Dedicated Solutions Architect & 99.99% SLA",
       ],
-      cta: "Deploy Bare Metal",
-      highlighted: false,
+      cta: "Contact Enterprise Sales",
+      planKey: "Enterprise",
     },
   ];
 
   return (
-    <section id="pricing" className="py-24 bg-slate-50/70 border-t border-slate-200/80">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <p className="text-[11px] font-mono font-semibold text-blue-600 uppercase tracking-wider mb-3">
-            Predictable Pricing
-          </p>
-          <h2 className="text-3xl sm:text-[36px] font-extrabold text-slate-900 tracking-tight leading-tight">
-            Safety that saves more than it costs
-          </h2>
-          <p className="text-sm text-slate-500 mt-4">
-            A single runaway agent can burn $500 in OpenAI tokens in minutes. CortexHeal pays for itself on day one.
-          </p>
+    <section id="pricing" className="py-24 max-w-6xl mx-auto px-6">
+      <div className="text-center max-w-2xl mx-auto mb-14">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-3">
+          <Shield className="w-3.5 h-3.5" /> Predictable Pricing
         </div>
+        <h2 className="text-3xl sm:text-[38px] font-extrabold text-white tracking-tight leading-tight">
+          Pays for itself the first time an agent loops
+        </h2>
+        <p className="text-sm text-zinc-400 mt-3">
+          A single runaway tool loop burns $300+ in OpenAI credits. CortexHeal stops it on step 4.
+        </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {plans.map((p) => (
-            <div
-              key={p.name}
-              className={`relative bg-white rounded-2xl p-7 flex flex-col justify-between transition-all duration-200 ${
-                p.highlighted
-                  ? "border-2 border-blue-600 shadow-xl shadow-blue-600/10 ring-1 ring-blue-600/20"
-                  : "border border-slate-200/90 hover:border-slate-300 shadow-sm"
-              }`}
-            >
-              {p.badge && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm">
+        {/* Billing Toggle */}
+        <div className="mt-7 inline-flex items-center p-1 bg-zinc-900 border border-zinc-800 rounded-xl">
+          <button
+            onClick={() => setBillingPeriod("monthly")}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              billingPeriod === "monthly"
+                ? "bg-zinc-800 text-white shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setBillingPeriod("annual")}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+              billingPeriod === "annual"
+                ? "bg-zinc-800 text-white shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            Annual
+            <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-800/60">
+              Save 20%
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {plans.map((p) => (
+          <div
+            key={p.name}
+            className={`relative rounded-2xl p-7 flex flex-col justify-between transition-all duration-200 border ${
+              p.highlight
+                ? "bg-zinc-900/90 border-blue-500/50 shadow-2xl shadow-blue-900/20 ring-1 ring-blue-500/30"
+                : "bg-zinc-900/50 border-zinc-800/90 hover:border-zinc-700"
+            }`}
+          >
+            {p.badge && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wider bg-blue-600 text-white shadow-sm uppercase">
                   {p.badge}
-                </div>
-              )}
+                </span>
+              </div>
+            )}
 
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-slate-900">{p.name}</h3>
-                  {p.name === "Developer" && <Zap className="w-5 h-5 text-slate-400" />}
-                  {p.name === "Team & Pro" && <ShieldCheck className="w-5 h-5 text-blue-600" />}
-                  {p.name === "Enterprise Bare Metal" && <Server className="w-5 h-5 text-indigo-600" />}
-                </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-bold text-white">{p.name}</h3>
+              </div>
+              <p className="text-xs text-zinc-400 mb-6 min-h-[34px] leading-relaxed">
+                {p.desc}
+              </p>
 
-                <div className="flex items-baseline gap-1 mb-3">
-                  <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              <div className="mb-7 pb-6 border-b border-zinc-800">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">
                     {p.price}
                   </span>
-                  <span className="text-xs text-slate-500 font-medium">/{p.period}</span>
+                  <span className="text-xs text-zinc-400 font-mono">/ {p.period}</span>
                 </div>
-
-                <p className="text-xs text-slate-500 mb-6 leading-relaxed min-h-[36px]">
-                  {p.description}
-                </p>
-
-                <div className="h-px w-full bg-slate-100 mb-6" />
-
-                <ul className="space-y-3 mb-8">
-                  {p.features.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2.5 text-xs text-slate-700">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
 
-              <button
-                onClick={() => onSelectPlan(p.name)}
-                className={`w-full py-3 px-4 rounded-xl font-semibold text-xs tracking-wide transition-all ${
-                  p.highlighted
-                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20"
-                    : "bg-slate-900 hover:bg-slate-800 text-white"
-                }`}
-              >
-                {p.cta}
-              </button>
+              <div className="space-y-3 mb-8">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
+                  Included capabilities
+                </span>
+                {p.features.map((f) => (
+                  <div key={f} className="flex items-start gap-2.5 text-xs text-zinc-300">
+                    <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+
+            <button
+              onClick={() => onSelectPlan?.(p.planKey)}
+              className={`w-full py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                p.highlight
+                  ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30"
+                  : "bg-zinc-800 hover:bg-zinc-750 text-white border border-zinc-700 hover:border-zinc-600"
+              }`}
+            >
+              {p.cta}
+            </button>
+          </div>
+        ))}
       </div>
     </section>
   );
