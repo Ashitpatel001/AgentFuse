@@ -22,12 +22,10 @@ import {
   AlertTriangle,
   ChevronRight,
   Server,
-  Star,
-  Key
+  Code2
 } from "lucide-react";
 import { SafetyDiagram } from "../components/SafetyDiagram";
 import { LiveMonitoringPreview } from "../components/LiveMonitoringPreview";
-import { PricingSection } from "../components/PricingSection";
 import { SignUpModal } from "../components/SignUpModal";
 
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173";
@@ -145,7 +143,7 @@ export function LandingPage() {
         {/* Eyebrow Announcement Pill */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200/80 bg-indigo-50/80 text-indigo-700 text-[11px] font-mono font-semibold mb-7 shadow-sm animate-fade-up">
           <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-          <span>NEW: Watchdog AI Automated Circuit Breaker • 100% Free & Open Source</span>
+          <span>NEW: Watchdog AI Automated Circuit Breaker for Autonomous Agents</span>
           <ChevronRight className="w-3.5 h-3.5 text-indigo-500" />
         </div>
 
@@ -165,38 +163,35 @@ export function LandingPage() {
         {/* Primary Action Buttons */}
         <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 animate-fade-up" style={{ animationDelay: "240ms" }}>
           <a
-            href="https://github.com/Ashitpatel001/Cortexheal"
-            target="_blank"
-            rel="noreferrer"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 text-[14px] font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-lg shadow-slate-900/25 hover:shadow-slate-900/35 transition-all hover:-translate-y-0.5 group"
-          >
-            <Star className="w-4 h-4 fill-amber-400 text-amber-400 group-hover:scale-110 transition-transform" />
-            <span>Star on GitHub</span>
-            <span className="px-2 py-0.5 rounded-md bg-white/20 text-xs font-mono font-bold">2.8k</span>
-          </a>
-          
-          <a
             href={DASHBOARD_URL}
             target="_blank"
             rel="noreferrer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 text-[14px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/35 transition-all hover:-translate-y-0.5"
+          >
+            <Activity className="w-4 h-4 text-white" />
+            Launch Live Console
+            <ArrowRight className="w-3.5 h-3.5 text-indigo-200" />
+          </a>
+          
+          <a
+            href="#breaker"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-[14px] font-semibold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl shadow-sm transition-all"
           >
-            <Activity className="w-4 h-4 text-indigo-600" />
-            Launch Live Console
-            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+            <Terminal className="w-4 h-4 text-slate-500" />
+            Test Live Breaker
           </a>
 
-          <button
-            onClick={() => handleOpenSignUp("Free Developer Key")}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 text-[14px] font-medium text-slate-700 hover:text-slate-900 transition-colors border border-slate-200 hover:border-slate-300 rounded-xl bg-white shadow-2xs"
+          <a
+            href="#frameworks"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors"
           >
-            <Key className="w-4 h-4 text-indigo-600" />
-            Get Free Key
-          </button>
+            <Code2 className="w-4 h-4 text-slate-400" />
+            Explore Integrations
+          </a>
         </div>
 
         <p className="mt-4 text-[12px] text-slate-500 font-mono">
-          100% Free & Open Source (Apache 2.0) • Air-Gapped Bare-Metal Ready • Zero Token Markup
+          Air-Gapped Bare-Metal Ready • SOC2 RFC JSON Audit Format • 100% BYOK Token Model
         </p>
 
         {/* ─── LIVE HERO CIRCUIT BREAKER SIMULATOR (Datadog style interactive console) ─── */}
@@ -388,13 +383,15 @@ export function LandingPage() {
                 </div>
               </div>
 
-              <button
-                onClick={() => handleOpenSignUp("Free Fleet")}
+              <a
+                href={DASHBOARD_URL}
+                target="_blank"
+                rel="noreferrer"
                 className="mt-6 w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-600/25"
               >
-                Protect This Fleet (100% Free)
+                Launch Console
                 <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              </a>
             </div>
           </div>
         </div>
@@ -500,9 +497,6 @@ export function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* ─── PRICING SECTION ─── */}
-      <PricingSection onSelectPlan={handleOpenSignUp} />
 
       {/* ─── SIGN UP MODAL ─── */}
       <SignUpModal

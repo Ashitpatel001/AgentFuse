@@ -29,7 +29,6 @@ export function Footer() {
               <li><a href="#breaker" className="hover:text-indigo-600 transition-colors">Circuit Breaker Simulator</a></li>
               <li><a href="#watchdog" className="hover:text-indigo-600 transition-colors">Watchdog Agent Queues</a></li>
               <li><a href="#architecture" className="hover:text-indigo-600 transition-colors">Architecture & Latency</a></li>
-              <li><a href="#open-source" className="hover:text-indigo-600 transition-colors">100% Free & Open Source</a></li>
             </ul>
           </div>
 
