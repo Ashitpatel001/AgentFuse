@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { Activity, ArrowRight, Code2, Sparkles, Key, Shield, Terminal, Zap, Star } from "lucide-react";
+import { Activity, ArrowRight, Code2, Sparkles, Shield, Terminal, Zap } from "lucide-react";
 
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173";
 
@@ -7,7 +7,7 @@ interface NavbarProps {
   onOpenSignUp?: () => void;
 }
 
-export function Navbar({ onOpenSignUp }: NavbarProps) {
+export function Navbar({ onOpenSignUp }: NavbarProps = {}) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/90 bg-white/90 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -53,13 +53,6 @@ export function Navbar({ onOpenSignUp }: NavbarProps) {
             >
               ROI Estimator
             </a>
-            <a
-              href="#open-source"
-              className="transition-colors hover:text-indigo-600 flex items-center gap-1"
-            >
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-              <span>Open Source</span>
-            </a>
             <NavLink
               to="/docs"
               className={({ isActive }) =>
@@ -76,23 +69,12 @@ export function Navbar({ onOpenSignUp }: NavbarProps) {
             href="https://github.com/Ashitpatel001/Cortexheal"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all shadow-xs group"
-            title="Star CortexHeal on GitHub"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all"
+            title="GitHub Repository"
           >
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 group-hover:scale-110 transition-transform" />
-            <span>Star</span>
-            <span className="ml-1 px-1.5 py-0.5 bg-white rounded text-[11px] font-mono font-bold text-slate-700 border border-slate-200">
-              2.8k
-            </span>
+            <Code2 className="w-4 h-4 text-slate-600" />
+            <span>GitHub</span>
           </a>
-
-          <button
-            onClick={onOpenSignUp}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-sm transition-all"
-          >
-            <Key className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Get Free Key</span>
-          </button>
 
           <a
             href={DASHBOARD_URL}
@@ -101,7 +83,7 @@ export function Navbar({ onOpenSignUp }: NavbarProps) {
             className="inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-600/25 transition-all"
           >
             <Activity className="w-3.5 h-3.5" />
-            <span>Console</span>
+            <span>Launch Console</span>
             <ArrowRight className="w-3.5 h-3.5 text-indigo-200" />
           </a>
         </div>
