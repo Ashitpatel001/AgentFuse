@@ -19,7 +19,9 @@ import {
   Flame,
   Zap,
   Sliders,
-  AlertTriangle
+  AlertTriangle,
+  ChevronRight,
+  Server
 } from "lucide-react";
 import { SafetyDiagram } from "../components/SafetyDiagram";
 import { LiveMonitoringPreview } from "../components/LiveMonitoringPreview";
@@ -56,6 +58,15 @@ cortex  = CortexHeal(adapter=adapter)
 builder.add_node("safety_gate", cortex.safety_gate)
 builder.set_entry_point("safety_gate")`;
 
+const supportedFrameworks = [
+  { name: "LangGraph", desc: "Native interrupt() State Resumption", tag: "First-Class" },
+  { name: "CrewAI", desc: "Multi-Agent Role Firewalls", tag: "Zero-Code" },
+  { name: "Microsoft AutoGen", desc: "Multi-Agent Turn Circuit Breaker", tag: "Supported" },
+  { name: "OpenAI SDK", desc: "Direct /v1 Proxy Gateway", tag: "Drop-in" },
+  { name: "Anthropic Claude", desc: "Tool Use Loop Interception", tag: "Drop-in" },
+  { name: "AWS Bedrock", desc: "VPC Air-Gapped Gateway", tag: "Enterprise" },
+];
+
 export function LandingPage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"proxy" | "adapter">("proxy");
@@ -65,16 +76,15 @@ export function LandingPage() {
   // Interactive Live Simulator State
   const [simStep, setSimStep] = useState<"idle" | "running" | "tripped" | "budget_tripped">("idle");
   const [simLogs, setSimLogs] = useState<string[]>([
-    "System idle. Select a simulation below to test circuit breaker behavior."
+    "System nominal. Select a simulation below to observe real-time circuit breaking."
   ]);
 
   // Interactive Runaway Loss Calculator
   const [agentCount, setAgentCount] = useState(10);
   const [hourlyCalls, setHourlyCalls] = useState(120);
 
-  // Math: 1 loop = ~15 repeated calls with GPT-4o input/output tokens = ~$12.50. 
-  // With 10 agents, estimated 2-4 rogue loops per month = ~$150-$600 runaway risk.
-  const estimatedSavedPerMonth = Math.round((agentCount * hourlyCalls * 0.0028 * 24 * 30 * 0.08));
+  // Math: Estimated monthly runaway token risk prevented
+  const estimatedSavedPerMonth = Math.round(agentCount * hourlyCalls * 0.0028 * 24 * 30 * 0.08);
 
   const copyCode = () => {
     navigator.clipboard.writeText(activeTab === "proxy" ? proxySnippet : codeSnippet);
@@ -124,119 +134,121 @@ export function LandingPage() {
   };
 
   return (
-    <div className="relative overflow-hidden bg-zinc-950 text-white min-h-screen">
-      <div className="absolute inset-0 grid-bg-dark pointer-events-none opacity-40" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[600px] gradient-hero-dark pointer-events-none" />
+    <div className="relative overflow-hidden bg-white text-slate-900 min-h-screen">
+      <div className="absolute inset-0 grid-bg-light pointer-events-none opacity-40" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[550px] gradient-datadog-hero pointer-events-none" />
 
-      {/* ─── Hero ─── */}
+      {/* ─── Hero Section (Datadog Style) ─── */}
       <section className="relative pt-20 pb-16 sm:pt-28 sm:pb-20 max-w-6xl mx-auto px-6 text-center">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[11px] font-mono font-semibold mb-7 shadow-sm animate-fade-up">
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-          The Automated Circuit Breaker & Safety Firewall for Autonomous AI Agents
+        {/* Eyebrow Announcement Pill */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200/80 bg-indigo-50/80 text-indigo-700 text-[11px] font-mono font-semibold mb-7 shadow-sm animate-fade-up">
+          <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+          <span>NEW: Watchdog AI Automated Circuit Breaker for Autonomous Agents</span>
+          <ChevronRight className="w-3.5 h-3.5 text-indigo-500" />
         </div>
 
-        <h1 className="text-4xl sm:text-6xl lg:text-[64px] font-extrabold text-white tracking-tight leading-[1.08] max-w-4xl mx-auto animate-fade-up" style={{ animationDelay: "80ms" }}>
-          Stop runaway agent loops in{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400">
-            24 milliseconds
+        {/* Hero Headline */}
+        <h1 className="text-4xl sm:text-6xl lg:text-[62px] font-extrabold text-slate-900 tracking-tight leading-[1.08] max-w-4xl mx-auto animate-fade-up" style={{ animationDelay: "80ms" }}>
+          Modern Safety & Observability for{" "}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700">
+            Autonomous AI Agents
           </span>
         </h1>
 
-        <p className="mt-6 text-[16px] sm:text-[18px] text-zinc-400 max-w-2xl mx-auto leading-relaxed animate-fade-up" style={{ animationDelay: "160ms" }}>
-          Every time an enterprise agent gets stuck in a tool loop, it burns $200–$500 in tokens and risks corrupting production databases. CortexHeal is the deterministic circuit breaker that stops loops before they compound — <strong className="text-white font-semibold">zero LLM hallucinations in the safety path.</strong>
+        {/* Hero Subtitle */}
+        <p className="mt-6 text-[17px] sm:text-[19px] text-slate-600 max-w-2xl mx-auto leading-relaxed animate-fade-up" style={{ animationDelay: "160ms" }}>
+          Every time an enterprise agent gets stuck in a tool loop, it burns $200–$500 in tokens and risks corrupting production databases. CortexHeal is the deterministic circuit breaker that stops loops in <strong>24 milliseconds</strong> — <span className="text-slate-900 font-semibold">zero LLM hallucinations in the safety path.</span>
         </p>
 
         {/* Primary Action Buttons */}
         <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 animate-fade-up" style={{ animationDelay: "240ms" }}>
           <button
             onClick={() => handleOpenSignUp("Developer")}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 text-[14px] font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 text-[14px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/35 transition-all hover:-translate-y-0.5"
           >
             <UserPlus className="w-4 h-4" />
-            Sign Up for Free Key
+            Start Free Trial
           </button>
           
           <a
             href={DASHBOARD_URL}
             target="_blank"
             rel="noreferrer"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-[14px] font-semibold text-zinc-200 bg-zinc-900 hover:bg-zinc-800 border border-zinc-750 rounded-xl shadow-sm transition-all"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 text-[14px] font-semibold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl shadow-sm transition-all"
           >
-            <Activity className="w-4 h-4 text-emerald-400" />
+            <Activity className="w-4 h-4 text-indigo-600" />
             Launch Live Console
-            <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </a>
 
           <a
-            href="https://github.com/Ashitpatel001/Cortexheal"
-            target="_blank"
-            rel="noreferrer"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 text-[14px] font-medium text-zinc-400 hover:text-white transition-colors"
+            href="#frameworks"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors"
           >
-            <Terminal className="w-4 h-4 text-zinc-500" />
-            GitHub Repo
+            <Terminal className="w-4 h-4 text-slate-400" />
+            Explore Integrations
           </a>
         </div>
 
-        <p className="mt-4 text-[12px] text-zinc-500 font-mono">
-          Open-Source Friendly • Runs Locally or on Bare-Metal Linux • BYOK Token Model
+        <p className="mt-4 text-[12px] text-slate-500 font-mono">
+          Air-Gapped Bare-Metal Ready • SOC2 RFC JSON Audit Format • 100% BYOK Token Model
         </p>
 
-        {/* ─── LIVE HERO CIRCUIT BREAKER SIMULATOR ─── */}
-        <div id="simulator" className="mt-14 max-w-4xl mx-auto text-left rounded-2xl border border-zinc-800 bg-zinc-950/90 shadow-2xl overflow-hidden backdrop-blur animate-fade-up" style={{ animationDelay: "320ms" }}>
-          {/* Terminal Titlebar */}
-          <div className="px-5 py-3 bg-zinc-900/90 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+        {/* ─── LIVE HERO CIRCUIT BREAKER SIMULATOR (Datadog style interactive console) ─── */}
+        <div id="breaker" className="mt-14 max-w-4xl mx-auto text-left rounded-2xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/50 overflow-hidden animate-fade-up" style={{ animationDelay: "320ms" }}>
+          {/* Header Titlebar */}
+          <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-rose-400 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-amber-400 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block" />
               </div>
-              <span className="text-xs font-mono text-zinc-400 pl-2 border-l border-zinc-800 flex items-center gap-1.5">
-                <Terminal className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-xs font-mono font-medium text-slate-700 pl-2 border-l border-slate-200 flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5 text-indigo-600" />
                 cortexheal-gateway // live breaker inspection
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Test Scenario:</span>
+              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider font-semibold">Test Probe:</span>
               <button
                 onClick={() => runSimulation("loop")}
-                className="px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition-all flex items-center gap-1"
+                className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-all flex items-center gap-1"
               >
-                <Zap className="w-3 h-3" />
-                Infinite Loop
+                <Zap className="w-3 h-3 text-rose-600" />
+                Trigger Loop
               </button>
               <button
                 onClick={() => runSimulation("budget")}
-                className="px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-all flex items-center gap-1"
+                className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all flex items-center gap-1"
               >
-                <Flame className="w-3 h-3" />
+                <Flame className="w-3 h-3 text-amber-600" />
                 Budget Spike
               </button>
               <button
                 onClick={() => runSimulation("normal")}
-                className="px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all flex items-center gap-1"
+                className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all flex items-center gap-1"
               >
-                <Play className="w-3 h-3 text-emerald-400" />
-                Clean Run
+                <Play className="w-3 h-3 text-emerald-600" />
+                Normal
               </button>
             </div>
           </div>
 
-          {/* Terminal Stream Body */}
-          <div className="p-5 font-mono text-xs sm:text-[13px] min-h-[170px] space-y-1.5 bg-black/60">
+          {/* Terminal Stream View */}
+          <div className="p-5 font-mono text-xs sm:text-[13px] min-h-[160px] space-y-1.5 bg-slate-900 text-slate-200">
             {simLogs.map((log, idx) => (
               <div
                 key={idx}
                 className={
                   log.includes("CIRCUIT BREAKER TRIPPED")
-                    ? "text-red-400 font-bold bg-red-950/30 p-1.5 rounded border border-red-900/50"
+                    ? "text-rose-400 font-bold bg-rose-950/40 p-1.5 rounded border border-rose-900/60"
                     : log.includes("BLOCKED") || log.includes("Saved")
                     ? "text-emerald-400 font-semibold"
                     : log.includes("matches 4th time")
                     ? "text-amber-400 font-semibold"
-                    : "text-zinc-300"
+                    : "text-slate-300"
                 }
               >
                 {log}
@@ -245,12 +257,12 @@ export function LandingPage() {
           </div>
 
           {/* Breaker Telemetry Status Footer */}
-          <div className="px-5 py-2.5 bg-zinc-900/60 border-t border-zinc-800 flex items-center justify-between text-[11px] font-mono text-zinc-400">
+          <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono text-slate-600">
             <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               SLIDING_WINDOW: 4 steps • HASH: SHA-256
             </span>
-            <span className="text-zinc-500">LATENCY: ≤ 24ms p50 (Mathematical check)</span>
+            <span className="text-slate-500">TRIP LATENCY: ≤ 24ms p50 (Zero LLM overhead)</span>
           </div>
         </div>
 
@@ -258,33 +270,56 @@ export function LandingPage() {
         <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-3.5 max-w-4xl mx-auto text-left animate-fade-up" style={{ animationDelay: "400ms" }}>
           {[
             { label: "Breaker Trip Latency", value: "≤ 24ms p50", sub: "Mathematical Hash Equality" },
-            { label: "LLMs In Safety Gate", value: "0 tokens", sub: "100% Deterministic / No Hallucinations" },
-            { label: "Token Billing Model", value: "100% BYOK", sub: "Zero LLM markups to customers" },
-            { label: "Audit Certification", value: "RFC JSON + CSV", sub: "Immutable SOC2 / HIPAA trails" },
+            { label: "LLMs In Safety Path", value: "0 tokens", sub: "100% Deterministic / No Hallucinations" },
+            { label: "Token Economics", value: "100% BYOK", sub: "Zero LLM markups to customers" },
+            { label: "Audit Format", value: "RFC JSON + CSV", sub: "Per-tenant immutable SOC2 trail" },
           ].map(({ label, value, sub }) => (
-            <div key={label} className="p-4 bg-zinc-900/70 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-all">
-              <span className="block text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-wider">
+            <div key={label} className="p-4 bg-white border border-slate-200/90 rounded-xl shadow-sm hover:border-slate-300 hover:shadow-md transition-all">
+              <span className="block text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-wider">
                 {label}
               </span>
-              <span className="text-[18px] font-extrabold text-white font-mono tracking-tight mt-1 block">{value}</span>
-              <span className="text-[11px] text-zinc-400 block mt-0.5">{sub}</span>
+              <span className="text-[18px] font-extrabold text-slate-900 font-mono tracking-tight mt-1 block">{value}</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5">{sub}</span>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ─── INTERACTIVE RUNAWAY LOSS CALCULATOR ─── */}
-      <section className="py-20 max-w-5xl mx-auto px-6 border-t border-zinc-850">
-        <div className="p-8 sm:p-10 bg-zinc-900/80 border border-zinc-800 rounded-3xl shadow-xl backdrop-blur">
+      {/* ─── SUPPORTED FRAMEWORKS (Datadog style logo cloud) ─── */}
+      <section id="frameworks" className="py-16 bg-slate-50 border-y border-slate-200/80">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-8">
+            <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500">
+              Universal Protection For Any Agent Architecture
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {supportedFrameworks.map((fw) => (
+              <div key={fw.name} className="p-4 bg-white border border-slate-200/80 rounded-xl text-center shadow-xs hover:border-indigo-300 hover:shadow-sm transition-all">
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase block w-max mx-auto mb-2">
+                  {fw.tag}
+                </span>
+                <span className="text-sm font-bold text-slate-900 block">{fw.name}</span>
+                <span className="text-[10px] text-slate-500 block mt-1 leading-tight">{fw.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── INTERACTIVE RUNAWAY LOSS CALCULATOR (Datadog style interactive tool) ─── */}
+      <section id="calculator" className="py-20 max-w-5xl mx-auto px-6">
+        <div className="p-8 sm:p-10 bg-white border border-slate-200/90 rounded-3xl shadow-lg shadow-slate-100">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
             <div className="max-w-md">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono font-semibold mb-3">
-                <Sliders className="w-3.5 h-3.5" /> ROI & Protection Estimator
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-mono font-semibold mb-3">
+                <Sliders className="w-3.5 h-3.5" /> ROI & Risk Estimator
               </div>
-              <h3 className="text-2xl font-bold text-white tracking-tight">
+              <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
                 Calculate your rogue agent risk
               </h3>
-              <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
+              <p className="text-sm text-slate-600 mt-2 leading-relaxed">
                 Autonomous agents in tool loops query LLMs recursively. Adjust your fleet parameters to see the runaway token bill CortexHeal eliminates.
               </p>
 
@@ -292,8 +327,8 @@ export function LandingPage() {
               <div className="mt-6 space-y-5">
                 <div>
                   <div className="flex justify-between text-xs font-mono mb-1.5">
-                    <span className="text-zinc-400">Active Autonomous Agents:</span>
-                    <span className="text-white font-bold">{agentCount} agents</span>
+                    <span className="text-slate-600">Active Autonomous Agents:</span>
+                    <span className="text-slate-900 font-bold">{agentCount} agents</span>
                   </div>
                   <input
                     type="range"
@@ -301,14 +336,14 @@ export function LandingPage() {
                     max="100"
                     value={agentCount}
                     onChange={(e) => setAgentCount(Number(e.target.value))}
-                    className="w-full accent-blue-500 bg-zinc-800 h-1.5 rounded-lg cursor-pointer"
+                    className="w-full accent-indigo-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                   />
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-mono mb-1.5">
-                    <span className="text-zinc-400">Avg Tool Calls / Hour:</span>
-                    <span className="text-white font-bold">{hourlyCalls} calls/hr</span>
+                    <span className="text-slate-600">Avg Tool Calls / Hour:</span>
+                    <span className="text-slate-900 font-bold">{hourlyCalls} calls/hr</span>
                   </div>
                   <input
                     type="range"
@@ -317,32 +352,32 @@ export function LandingPage() {
                     step="10"
                     value={hourlyCalls}
                     onChange={(e) => setHourlyCalls(Number(e.target.value))}
-                    className="w-full accent-blue-500 bg-zinc-800 h-1.5 rounded-lg cursor-pointer"
+                    className="w-full accent-indigo-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Calculation Output Card */}
-            <div className="w-full lg:w-[360px] p-6 bg-zinc-950 border border-zinc-800 rounded-2xl flex flex-col justify-between">
+            {/* Output Card */}
+            <div className="w-full lg:w-[360px] p-6 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between">
               <div>
-                <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block mb-1">
+                <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wider block mb-1">
                   Estimated Rogue Token Waste Blocked
                 </span>
-                <div className="text-4xl font-extrabold text-emerald-400 font-mono tracking-tight">
-                  ${estimatedSavedPerMonth.toLocaleString()} <span className="text-xs text-zinc-400">/ mo</span>
+                <div className="text-4xl font-extrabold text-indigo-700 font-mono tracking-tight">
+                  ${estimatedSavedPerMonth.toLocaleString()} <span className="text-xs text-slate-500">/ mo</span>
                 </div>
-                <div className="mt-4 pt-4 border-t border-zinc-850 space-y-2 text-xs text-zinc-400">
+                <div className="mt-4 pt-4 border-t border-slate-200 space-y-2 text-xs text-slate-600">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                     <span>Halts loops on 4th repetition</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                     <span>Guards production DB from recursive writes</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                     <span>Instant Slack & PagerDuty notification</span>
                   </div>
                 </div>
@@ -350,7 +385,7 @@ export function LandingPage() {
 
               <button
                 onClick={() => handleOpenSignUp("Developer")}
-                className="mt-6 w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30"
+                className="mt-6 w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-600/25"
               >
                 Protect This Fleet Now
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -360,16 +395,16 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Watchdog & Agent Queue Live Monitor ─── */}
-      <section id="monitoring" className="py-20 max-w-6xl mx-auto px-6">
+      {/* ─── WATCHDOG LIVE MONITOR (Datadog APM Style) ─── */}
+      <section id="watchdog" className="py-20 max-w-6xl mx-auto px-6 border-t border-slate-200/80">
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Real-Time Telemetry
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold mb-3">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Watchdog AI Telemetry
           </div>
-          <h2 className="text-3xl sm:text-[38px] font-extrabold text-white tracking-tight leading-tight">
-            Datadog Watchdog & PostHog grade APM
+          <h2 className="text-3xl sm:text-[38px] font-extrabold text-slate-900 tracking-tight leading-tight">
+            Datadog Watchdog & APM observability for agents
           </h2>
-          <p className="text-sm text-zinc-400 mt-3">
+          <p className="text-sm text-slate-600 mt-3">
             Interact with our simulated fleet below. Trigger runaway loops or budget spikes to see the circuit breaker intervene in under 24 milliseconds.
           </p>
         </div>
@@ -377,32 +412,32 @@ export function LandingPage() {
         <LiveMonitoringPreview />
       </section>
 
-      {/* ─── How Safety Gate Works ─── */}
-      <section id="architecture" className="py-20 max-w-5xl mx-auto px-6 border-t border-zinc-850">
+      {/* ─── HOW IT WORKS ARCHITECTURE ─── */}
+      <section id="architecture" className="py-20 max-w-5xl mx-auto px-6 border-t border-slate-200/80">
         <SafetyDiagram />
       </section>
 
-      {/* ─── Code Integration Section (Dual Mode) ─── */}
-      <section className="py-24 max-w-5xl mx-auto px-6 border-t border-zinc-850">
+      {/* ─── DUAL INTEGRATION ARCHITECTURE ─── */}
+      <section className="py-24 max-w-5xl mx-auto px-6 border-t border-slate-200/80">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
-            <p className="text-[11px] font-mono font-semibold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Terminal className="w-3.5 h-3.5" /> Dual Integration Architecture
+            <p className="text-[11px] font-mono font-semibold text-indigo-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5" /> Dual Integration Modes
             </p>
-            <h2 className="text-3xl sm:text-[36px] font-extrabold text-white tracking-tight leading-tight mb-4">
+            <h2 className="text-3xl sm:text-[36px] font-extrabold text-slate-900 tracking-tight leading-tight mb-4">
               Onboard in 30 seconds without refactoring
             </h2>
-            <p className="text-sm text-zinc-400 leading-relaxed mb-6">
-              Choose between a zero-code OpenAI proxy (drop-in <code className="text-blue-400 font-mono">base_url</code> swap) or deep in-memory LangGraph state graph pause & resumption.
+            <p className="text-sm text-slate-600 leading-relaxed mb-6">
+              Choose between a zero-code OpenAI proxy (drop-in <code className="text-indigo-600 font-mono font-semibold">base_url</code> swap) or deep in-memory LangGraph state graph pause & resumption.
             </p>
 
-            <div className="flex gap-2 p-1 bg-zinc-900 border border-zinc-800 rounded-xl max-w-sm mb-6">
+            <div className="flex gap-2 p-1 bg-slate-100 border border-slate-200 rounded-xl max-w-sm mb-6">
               <button
                 onClick={() => setActiveTab("proxy")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   activeTab === "proxy"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Zero-Code Proxy Gateway
@@ -411,60 +446,60 @@ export function LandingPage() {
                 onClick={() => setActiveTab("adapter")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   activeTab === "adapter"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 LangGraph Adapter
               </button>
             </div>
 
-            <ul className="space-y-3 text-xs text-zinc-300">
+            <ul className="space-y-3 text-xs text-slate-700">
               <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                 <span>{activeTab === "proxy" ? "Works with LangChain, CrewAI, AutoGen, and raw OpenAI SDK" : "Physically suspends LangGraph DAG execution via interrupt()"}</span>
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                 <span>{activeTab === "proxy" ? "BYOK token economics — CortexHeal incurs zero upstream LLM bills" : "Zero cold-restart required: resume state right where it halted"}</span>
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                 <span>{activeTab === "proxy" ? "Inline budget enforcement: trips HTTP 429 when cap exceeded" : "Full audit logging with RFC JSON/CSV compliance exports"}</span>
               </li>
             </ul>
           </div>
 
           {/* Code Viewer Card */}
-          <div className="relative rounded-2xl bg-zinc-950 border border-zinc-800 shadow-2xl overflow-hidden">
-            <div className="px-4 py-3 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between">
+          <div className="relative rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden text-white">
+            <div className="px-4 py-3 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
-                <span className="text-[11px] font-mono text-zinc-400 ml-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+                <span className="text-[11px] font-mono text-slate-400 ml-2">
                   {activeTab === "proxy" ? "agent_worker.py (Proxy)" : "agent_graph.py (Native)"}
                 </span>
               </div>
               <button
                 onClick={copyCode}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors border border-zinc-700"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors border border-slate-600"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? "Copied" : "Copy"}</span>
               </button>
             </div>
-            <pre className="p-5 font-mono text-[12px] leading-relaxed text-zinc-300 overflow-x-auto bg-black/60">
+            <pre className="p-5 font-mono text-[12px] leading-relaxed text-slate-200 overflow-x-auto bg-black/60">
               <code>{activeTab === "proxy" ? proxySnippet : codeSnippet}</code>
             </pre>
           </div>
         </div>
       </section>
 
-      {/* ─── Pricing Section ─── */}
+      {/* ─── PRICING SECTION ─── */}
       <PricingSection onSelectPlan={handleOpenSignUp} />
 
-      {/* ─── Sign Up Modal ─── */}
+      {/* ─── SIGN UP MODAL ─── */}
       <SignUpModal
         isOpen={isSignUpOpen}
         onClose={() => setIsSignUpOpen(false)}

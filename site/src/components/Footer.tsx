@@ -2,21 +2,21 @@ import { Activity, Shield, Code2, ArrowUpRight } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t border-zinc-800/80 bg-zinc-950 py-14 text-zinc-400 text-xs">
+    <footer className="border-t border-slate-200 bg-slate-50 py-14 text-slate-600 text-xs">
       <div className="max-w-6xl mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="space-y-3 md:col-span-1">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white">
+              <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center text-white">
                 <Shield className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[14px] font-bold text-white tracking-tight">CortexHeal</span>
+              <span className="text-[15px] font-bold text-slate-900 tracking-tight">CortexHeal</span>
             </div>
-            <p className="text-[12px] text-zinc-400 leading-relaxed">
+            <p className="text-[12px] text-slate-500 leading-relaxed">
               The automated circuit breaker and safety firewall for autonomous AI agents. Deterministic loop prevention in ≤24 milliseconds.
             </p>
-            <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-400 pt-1">
+            <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-700 pt-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               Systems Nominal • v1.0 Production
             </div>
@@ -24,39 +24,39 @@ export function Footer() {
 
           {/* Product */}
           <div>
-            <h4 className="text-[11px] font-mono uppercase tracking-wider text-zinc-300 font-bold mb-3">Product</h4>
+            <h4 className="text-[11px] font-mono uppercase tracking-wider text-slate-900 font-bold mb-3">Product</h4>
             <ul className="space-y-2">
-              <li><a href="#simulator" className="hover:text-white transition-colors">Circuit Breaker Simulator</a></li>
-              <li><a href="#monitoring" className="hover:text-white transition-colors">Watchdog Agent Queues</a></li>
-              <li><a href="#architecture" className="hover:text-white transition-colors">Architecture & Latency</a></li>
-              <li><a href="#pricing" className="hover:text-white transition-colors">Enterprise Pricing</a></li>
+              <li><a href="#breaker" className="hover:text-indigo-600 transition-colors">Circuit Breaker Simulator</a></li>
+              <li><a href="#watchdog" className="hover:text-indigo-600 transition-colors">Watchdog Agent Queues</a></li>
+              <li><a href="#architecture" className="hover:text-indigo-600 transition-colors">Architecture & Latency</a></li>
+              <li><a href="#pricing" className="hover:text-indigo-600 transition-colors">Enterprise Pricing</a></li>
             </ul>
           </div>
 
           {/* Developers */}
           <div>
-            <h4 className="text-[11px] font-mono uppercase tracking-wider text-zinc-300 font-bold mb-3">Developers</h4>
+            <h4 className="text-[11px] font-mono uppercase tracking-wider text-slate-900 font-bold mb-3">Developers</h4>
             <ul className="space-y-2">
-              <li><a href="/docs" className="hover:text-white transition-colors">API Reference & SDK</a></li>
-              <li><a href="/docs" className="hover:text-white transition-colors">LangGraph Adapter</a></li>
-              <li><a href="/docs" className="hover:text-white transition-colors">OpenAI Gateway Drop-in</a></li>
-              <li><a href="https://github.com/Ashitpatel001/Cortexheal" target="_blank" rel="noreferrer" className="hover:text-white transition-colors inline-flex items-center gap-1">GitHub Repository <ArrowUpRight className="w-3 h-3" /></a></li>
+              <li><a href="/docs" className="hover:text-indigo-600 transition-colors">API Reference & SDK</a></li>
+              <li><a href="/docs" className="hover:text-indigo-600 transition-colors">LangGraph Adapter</a></li>
+              <li><a href="/docs" className="hover:text-indigo-600 transition-colors">OpenAI Gateway Drop-in</a></li>
+              <li><a href="https://github.com/Ashitpatel001/Cortexheal" target="_blank" rel="noreferrer" className="hover:text-indigo-600 transition-colors inline-flex items-center gap-1">GitHub Repository <ArrowUpRight className="w-3 h-3" /></a></li>
             </ul>
           </div>
 
           {/* Enterprise */}
           <div>
-            <h4 className="text-[11px] font-mono uppercase tracking-wider text-zinc-300 font-bold mb-3">Enterprise</h4>
+            <h4 className="text-[11px] font-mono uppercase tracking-wider text-slate-900 font-bold mb-3">Enterprise</h4>
             <ul className="space-y-2">
-              <li><span className="text-zinc-500">Bare-Metal Deployment</span></li>
-              <li><span className="text-zinc-500">Air-Gapped VPC Architecture</span></li>
-              <li><span className="text-zinc-500">SOC2 Audit Export</span></li>
-              <li><span className="text-zinc-500">Deterministic Hashing Specs</span></li>
+              <li><span className="text-slate-500">Bare-Metal Linux Deployment</span></li>
+              <li><span className="text-slate-500">Air-Gapped VPC Architecture</span></li>
+              <li><span className="text-slate-500">SOC2 Audit Export</span></li>
+              <li><span className="text-slate-500">Deterministic Hashing Specs</span></li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-zinc-800/80 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-zinc-500 text-[11px]">
+        <div className="border-t border-slate-200 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
           <p>© {new Date().getFullYear()} CortexHeal, Inc. All rights reserved.</p>
           <p className="font-mono">Engineered for mission-critical autonomous workloads.</p>
         </div>
