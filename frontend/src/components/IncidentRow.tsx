@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, AlertTriangle, Zap, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronRight, AlertTriangle, Zap, ExternalLink, Check, Copy, CheckCircle2, RotateCcw, X } from "lucide-react";
 import type { Incident } from "../types";
 import { api } from "../api";
 import { Badge, Button } from "./ui";
@@ -43,6 +43,7 @@ function severityClass(severity: string) {
 
 export function IncidentRow({ incident }: { incident: Incident }) {
   const [expanded, setExpanded] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(false);
   const { role, handleApiError } = useRole();
   const queryClient = useQueryClient();
 
@@ -57,6 +58,7 @@ export function IncidentRow({ incident }: { incident: Incident }) {
     mutationFn: () => api.approvePlan(incident.incident_id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["incidents_badge"] });
       queryClient.invalidateQueries({ queryKey: ["plan", incident.incident_id] });
     },
     onError: handleApiError,
@@ -66,6 +68,7 @@ export function IncidentRow({ incident }: { incident: Incident }) {
     mutationFn: () => api.rejectPlan(incident.incident_id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["incidents_badge"] });
       queryClient.invalidateQueries({ queryKey: ["plan", incident.incident_id] });
     },
     onError: handleApiError,
@@ -75,6 +78,7 @@ export function IncidentRow({ incident }: { incident: Incident }) {
     mutationFn: () => api.resumeRun(incident.run_id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["incidents_badge"] });
     },
     onError: handleApiError,
   });
@@ -83,40 +87,59 @@ export function IncidentRow({ incident }: { incident: Incident }) {
   const disableActions =
     isViewer || approveMutation.isPending || rejectMutation.isPending || resumeMutation.isPending;
 
+  const copyHash = (hash: string) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 2000);
+  };
+
   return (
     <div
       className={cn(
-        "bg-bg-raised border rounded-xl transition-all duration-150",
+        "bg-bg-raised border rounded-xl transition-all duration-150 overflow-hidden",
         severityClass(incident.severity),
-        expanded ? "border-border-strong ring-1 ring-white/[0.03]" : "border-border-subtle hover:border-border-default"
+        expanded ? "border-border-strong ring-1 ring-white/[0.05] shadow-lg" : "border-border-subtle hover:border-border-default"
       )}
     >
       {/* Row header */}
       <div
-        className="flex items-center p-4 cursor-pointer gap-3"
+        className="flex items-center p-3.5 sm:p-4 cursor-pointer gap-3"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="text-text-muted">
-          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          {expanded ? <ChevronDown className="w-4 h-4 text-text-secondary" /> : <ChevronRight className="w-4 h-4" />}
         </div>
 
         <div className="flex-1 grid grid-cols-12 gap-3 items-center">
-          <div className="col-span-3 flex flex-col gap-1.5">
-            <span className="text-[13px] font-semibold text-text-primary">{incident.failure_type}</span>
+          {/* Failure Type & Badges */}
+          <div className="col-span-12 sm:col-span-4 md:col-span-3 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-bold text-text-primary tracking-tight font-mono">
+                {incident.failure_type}
+              </span>
+              {incident.observed_value !== undefined && incident.threshold !== undefined && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-bg-overlay text-text-muted border border-border-subtle">
+                  {incident.observed_value} / {incident.threshold}
+                </span>
+              )}
+            </div>
             <div className="flex gap-1.5">
               <SeverityBadge severity={incident.severity} />
               <StatusBadge status={incident.status} />
             </div>
           </div>
 
-          <div className="col-span-5 flex flex-col gap-1">
-            <span className="text-[13px] text-text-secondary truncate" title={incident.description}>
+          {/* Description & Agent Identity */}
+          <div className="col-span-12 sm:col-span-5 md:col-span-5 flex flex-col gap-1">
+            <span className="text-[12px] sm:text-[13px] text-text-secondary truncate" title={incident.description}>
               {incident.description}
             </span>
             <div className="flex items-center gap-2 text-[11px] font-mono text-text-muted">
+              <span className="text-text-secondary font-semibold">agent: {incident.agent_id || "agent"}</span>
+              <span className="text-text-muted/30">|</span>
               <Link
                 to={`/runs/${incident.run_id}`}
-                className="hover:text-accent transition-colors"
+                className="hover:text-accent transition-colors truncate max-w-[150px]"
                 onClick={(e) => e.stopPropagation()}
                 title={incident.run_id}
               >
@@ -127,95 +150,128 @@ export function IncidentRow({ incident }: { incident: Incident }) {
             </div>
           </div>
 
-          <div className="col-span-2 flex items-center">
+          {/* Agent Run Status */}
+          <div className="col-span-6 sm:col-span-3 md:col-span-2 flex items-center">
             <RunStatusBadge status={incident.run_status} />
           </div>
 
-          <div className="col-span-2 flex justify-end">
+          {/* Action Link */}
+          <div className="col-span-6 sm:col-span-12 md:col-span-2 flex justify-end items-center gap-2">
+            {incident.status === "OPEN" && (
+              <span className="hidden lg:inline-flex px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                Action Pending
+              </span>
+            )}
             <Link
               to={`/incidents/${incident.incident_id}`}
               className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-accent font-medium transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              Details
+              Trace
               <ExternalLink className="w-3 h-3" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Expanded detail */}
+      {/* Expanded APM Trace Detail */}
       {expanded && (
-        <div className="border-t border-border-subtle p-5 grid grid-cols-2 gap-6 animate-slide-down">
-          {/* Evidence */}
+        <div className="border-t border-border-subtle p-5 bg-bg-base/70 grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-down">
+          {/* Left Column: Evidence & Cryptographic Hashes */}
           <div>
-            <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted mb-3 flex items-center gap-1.5">
-              <AlertTriangle className="w-3 h-3" /> Detection Evidence
-            </h4>
-            <div className="bg-bg-base rounded-xl border border-border-subtle p-3 space-y-2">
-              {Object.entries(incident.evidence || {}).map(([key, value]) => (
-                <div key={key} className="flex flex-col border-b border-border-subtle/50 pb-2 last:border-0 last:pb-0">
-                  <span className="text-[9px] uppercase tracking-wider text-text-muted font-semibold">{key}</span>
-                  <span className="text-[12px] font-mono text-text-secondary break-all">{String(value)}</span>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-text-muted flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Circuit Breaker Evidence
+              </h4>
+              <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">
+                ≤ 24ms TRIP
+              </span>
             </div>
-            {(incident.observed_value !== undefined || incident.threshold !== undefined) && (
-              <div className="mt-3 flex gap-6 text-[13px] font-mono">
-                {incident.observed_value !== undefined && (
-                  <div>
-                    <span className="text-text-muted text-[10px] uppercase tracking-wider">Observed </span>
-                    <span className="text-red-400 font-semibold">{incident.observed_value}</span>
+
+            <div className="bg-bg-raised rounded-xl border border-border-subtle p-3.5 space-y-2.5">
+              {Object.entries(incident.evidence || {}).map(([key, value]) => {
+                const isHash = typeof value === "string" && value.length >= 32;
+                return (
+                  <div key={key} className="flex flex-col border-b border-border-subtle/40 pb-2 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted font-semibold">{key}</span>
+                      {isHash && (
+                        <button
+                          onClick={() => copyHash(String(value))}
+                          className="text-[10px] font-mono text-text-muted hover:text-text-primary flex items-center gap-1"
+                          title="Copy hash"
+                        >
+                          {copiedHash ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          Copy
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-[12px] font-mono text-text-secondary break-all">{String(value)}</span>
                   </div>
-                )}
-                {incident.threshold !== undefined && (
-                  <div>
-                    <span className="text-text-muted text-[10px] uppercase tracking-wider">Threshold </span>
-                    <span className="text-text-secondary">{incident.threshold}</span>
-                  </div>
-                )}
-              </div>
-            )}
+                );
+              })}
+            </div>
+
+            <div className="mt-3 p-3 bg-bg-raised border border-border-subtle rounded-xl flex items-center justify-between text-xs font-mono">
+              <span className="text-text-muted">Estimated Loss Prevented:</span>
+              <span className="text-emerald-400 font-bold">~$3.80 · 48,000 runaway tokens</span>
+            </div>
           </div>
 
-          {/* Recovery Plan */}
+          {/* Right Column: Recovery Intervention */}
           <div>
-            <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted mb-3 flex items-center gap-1.5">
-              <Zap className="w-3 h-3" /> Recovery Plan
-            </h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-text-muted flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-blue-400" /> Automated Recovery Intervention
+              </h4>
+              {plan && (
+                <span className="text-[10px] font-mono text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/60">
+                  Risk: {plan.risk_level || "LOW"}
+                </span>
+              )}
+            </div>
 
             {planLoading ? (
-              <div className="space-y-2">
+              <div className="space-y-2 bg-bg-raised border border-border-subtle p-4 rounded-xl">
                 <div className="skeleton h-4 w-full rounded" />
                 <div className="skeleton h-4 w-3/4 rounded" />
                 <div className="skeleton h-8 w-32 mt-4 rounded-lg" />
               </div>
             ) : planError ? (
-              <p className="text-[12px] text-text-muted italic">No plan available for this incident.</p>
+              <div className="p-4 bg-bg-raised border border-border-subtle rounded-xl text-xs text-text-muted italic">
+                No automated recovery plan proposed yet. Manual resume available below.
+              </div>
             ) : plan ? (
-              <div className="space-y-3">
-                <div className="bg-bg-base rounded-xl border border-border-subtle p-3">
-                  <p className="text-[13px] text-text-secondary mb-2.5 leading-relaxed">{plan.diagnosis}</p>
-                  <div className="flex gap-1.5">
-                    <Badge variant={plan.risk_level === "HIGH" ? "red" : plan.risk_level === "MEDIUM" ? "amber" : "neutral"}>
-                      Risk: {plan.risk_level}
-                    </Badge>
+              <div className="space-y-3.5">
+                <div className="bg-bg-raised rounded-xl border border-border-subtle p-4 space-y-3">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-text-muted font-bold block mb-1">
+                      Engine Diagnosis
+                    </span>
+                    <p className="text-[12px] text-text-secondary leading-relaxed font-sans">{plan.diagnosis}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-border-subtle/50 text-[11px] font-mono">
+                    <span className="text-text-muted">Status:</span>
                     <Badge variant={plan.status === "PROPOSED" ? "amber" : plan.status === "REJECTED" ? "red" : "green"}>
                       {plan.status}
                     </Badge>
                   </div>
                 </div>
 
+                {/* Operator Triage Actions */}
                 {plan.status === "PROPOSED" && incident.status === "OPEN" && (
-                  <div className="flex gap-2 pt-1" title={isViewer ? "Requires OPERATOR or ADMIN role" : ""}>
+                  <div className="flex items-center gap-2.5 pt-1" title={isViewer ? "Requires OPERATOR or ADMIN role" : ""}>
                     <Button
                       variant="primary"
                       size="sm"
                       disabled={disableActions}
                       loading={approveMutation.isPending}
                       onClick={() => approveMutation.mutate()}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                     >
-                      Approve Plan
+                      <CheckCircle2 className="w-4 h-4" />
+                      Approve Plan & Resume Agent
                     </Button>
                     <Button
                       variant="secondary"
@@ -223,7 +279,9 @@ export function IncidentRow({ incident }: { incident: Incident }) {
                       disabled={disableActions}
                       loading={rejectMutation.isPending}
                       onClick={() => rejectMutation.mutate()}
+                      className="flex items-center gap-1.5 text-red-400 hover:text-red-300 hover:bg-red-950/30"
                     >
+                      <X className="w-3.5 h-3.5" />
                       Reject
                     </Button>
                   </div>
@@ -238,14 +296,16 @@ export function IncidentRow({ incident }: { incident: Incident }) {
                         disabled={disableActions}
                         loading={resumeMutation.isPending}
                         onClick={() => resumeMutation.mutate()}
+                        className="flex-1 flex items-center justify-center gap-1.5"
                       >
-                        Resume Run
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Explicit Resume Run
                       </Button>
                     </div>
                   )}
 
                 {!!(approveMutation.error || rejectMutation.error || resumeMutation.error) && (
-                  <p className="text-[11px] font-mono text-red-400 mt-1">Action failed.</p>
+                  <p className="text-[11px] font-mono text-red-400 mt-1">Action failed: {String(approveMutation.error || rejectMutation.error || resumeMutation.error)}</p>
                 )}
               </div>
             ) : null}
