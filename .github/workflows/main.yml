@@ -7,7 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  backend-test:
+    name: Backend Tests & Build
     runs-on: ubuntu-latest
     
     services:
@@ -20,16 +21,26 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U cortexheal -d cortexheal_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.11"
         
@@ -42,11 +53,12 @@ jobs:
       env:
         DATABASE_URL: postgresql://cortexheal:cortexpassword@localhost:5432/cortexheal_db
       run: |
-        alembic upgrade head
+        python -c "from cortexheal.storage.postgres import init_db; init_db()"
         
     - name: Run Tests
       env:
         DATABASE_URL: postgresql://cortexheal:cortexpassword@localhost:5432/cortexheal_db
+        REDIS_URL: redis://localhost:6379/0
       run: |
         pytest tests/
         
@@ -58,3 +70,26 @@ jobs:
     - name: Test Docker Build
       run: |
         docker build -t cortexheal:test .
+
+  frontend-build:
+    name: Frontend & Site Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        
+    - name: Build Dashboard Frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+
+    - name: Build Marketing Site
+      run: |
+        cd site
+        npm ci
+        npm run build
