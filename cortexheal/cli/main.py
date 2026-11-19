@@ -484,6 +484,21 @@ def retention(days, org):
     click.secho("Retention: purged {} event(s) older than {} days ({}).".format(deleted, d, scope), fg="green")
 
 
+@cli.command()
+def mcp():
+    """Launch the Model Context Protocol (MCP) server over stdio for Claude Desktop, Cursor, and Windsurf."""
+    try:
+        from cortexheal.mcp_server import main as run_mcp
+    except ImportError:
+        click.secho(
+            "Error: 'mcp' dependency is not installed.\n"
+            "Install it via: pip install 'cortexheal[mcp]'",
+            fg="red"
+        )
+        raise SystemExit(1)
+    run_mcp()
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------

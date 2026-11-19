@@ -58,13 +58,26 @@ cortex  = CortexHeal(adapter=adapter)
 builder.add_node("safety_gate", cortex.safety_gate)
 builder.set_entry_point("safety_gate")`;
 
+const mcpSnippet = `// In claude_desktop_config.json or .cursor/mcp.json
+{
+  "mcpServers": {
+    "cortexheal": {
+      "command": "cortexheal",
+      "args": ["mcp"],
+      "env": {
+        "DATABASE_URL": "postgresql://cortexheal:cortexpassword@localhost:5433/cortexheal_db"
+      }
+    }
+  }
+}`;
+
 const supportedFrameworks = [
+  { name: "OpenAI Proxy", desc: "Zero-Code 1-Line Drop-in Gateway", tag: "30-Sec Drop-in" },
   { name: "LangGraph", desc: "Native interrupt() State Resumption", tag: "First-Class" },
+  { name: "Model Context Protocol", desc: "Claude Desktop & Cursor Tool Server", tag: "MCP stdio" },
   { name: "CrewAI", desc: "Multi-Agent Role Firewalls", tag: "Zero-Code" },
   { name: "Microsoft AutoGen", desc: "Multi-Agent Turn Circuit Breaker", tag: "Supported" },
-  { name: "OpenAI SDK", desc: "Direct /v1 Proxy Gateway", tag: "Drop-in" },
   { name: "Anthropic Claude", desc: "Tool Use Loop Interception", tag: "Drop-in" },
-  { name: "AWS Bedrock", desc: "VPC Air-Gapped Gateway", tag: "Enterprise" },
 ];
 
 export function LandingPage() {
@@ -75,8 +88,10 @@ export function LandingPage() {
 
   // Interactive Live Simulator State
   const [simStep, setSimStep] = useState<"idle" | "running" | "tripped" | "budget_tripped">("idle");
+  const [iteration, setIteration] = useState(0);
+  const [sandboxTab, setSandboxTab] = useState<"terminal" | "proxy" | "mcp">("terminal");
   const [simLogs, setSimLogs] = useState<string[]>([
-    "System nominal. Select a simulation below to observe real-time circuit breaking."
+    "[00:00.000] System nominal. Click 'Trigger Infinite Agent Loop' below to test deterministic circuit breaking."
   ]);
 
   // Interactive Runaway Loss Calculator
@@ -99,38 +114,73 @@ export function LandingPage() {
 
   const runSimulation = (type: "loop" | "budget" | "normal") => {
     setSimStep("running");
-    setSimLogs(["[00:00.000] Ingesting request for agent: 'crm_support_bot'..."]);
+    setIteration(1);
+    setSandboxTab("terminal");
+    setSimLogs(["[00:00.002] Ingesting request for agent: 'finance_reconciliation_agent'..."]);
 
-    setTimeout(() => {
-      if (type === "loop") {
-        setSimLogs([
-          "[00:00.008] Step 1: Tool 'search_crm_tickets' -> args: {user: '10482'} (200 OK)",
-          "[00:00.016] Step 2: Tool 'search_crm_tickets' -> args: {user: '10482'} (200 OK)",
-          "[00:00.022] Step 3: Tool 'search_crm_tickets' -> args: {user: '10482'} (200 OK)",
-          "[00:00.024] ⚡ SHA-256 state hash '7f8a32...' matches 4th time in sliding window!",
-          "[00:00.026] 🛑 CIRCUIT BREAKER TRIPPED (HTTP 429 STUCK_LOOP_TRIPPED) in 24ms",
-          "[00:00.028] 🛡️ 4 upstream OpenAI calls blocked. Saved ~$3.80. Slack webhook dispatched."
+    if (type === "loop") {
+      setTimeout(() => {
+        setIteration(2);
+        setSimLogs((prev) => [
+          ...prev,
+          "[00:00.007] Step 1: Tool 'reconcile_invoice' -> args: {inv: 10482} | State Hash: sha256:8f4c21... (200 OK)",
+          "[00:00.014] Step 2: Tool 'reconcile_invoice' -> args: {inv: 10482} | ⚠️ Duplicate Hash matched (2x in window)"
+        ]);
+      }, 200);
+
+      setTimeout(() => {
+        setIteration(3);
+        setSimLogs((prev) => [
+          ...prev,
+          "[00:00.019] Step 3: Tool 'reconcile_invoice' -> args: {inv: 10482} | ⚠️ Duplicate Hash matched (3x in window)"
+        ]);
+      }, 400);
+
+      setTimeout(() => {
+        setIteration(4);
+        setSimLogs((prev) => [
+          ...prev,
+          "[00:00.022] ⚡ SHA-256 state hash '8f4c21...' matches 4th time in sliding window (threshold = 4)",
+          "[00:00.024] 🛑 ≤ 24ms CIRCUIT TRIPPED: HTTP 429 STUCK_LOOP_INTERCEPTED",
+          "[00:00.026] 🛡️ Agent graph execution physically PAUSED via interrupt(). Upstream LLM call aborted.",
+          "[00:00.028] 💰 Prevented 40+ rogue loops. Saved ~$18.40 in runaway tokens. PagerDuty/Slack alerted."
         ]);
         setSimStep("tripped");
-      } else if (type === "budget") {
-        setSimLogs([
-          "[00:00.010] Step 1: Bulk LLM embedding -> 12,000 prompt tokens ($0.03)",
-          "[00:00.018] Step 2: Bulk LLM embedding -> 45,000 prompt tokens ($0.11)",
-          "[00:00.022] ⚠️ Run cost $1.02 exceeds hard ceiling limit ($1.00)",
-          "[00:00.024] 🛑 CIRCUIT BREAKER TRIPPED (HTTP 429 BUDGET_EXCEEDED) in 22ms",
-          "[00:00.026] 🛡️ Upstream API paused. Run safely parked for operator review."
+      }, 650);
+    } else if (type === "budget") {
+      setTimeout(() => {
+        setIteration(2);
+        setSimLogs((prev) => [
+          ...prev,
+          "[00:00.010] Step 1: Embedding generation -> 45,000 prompt tokens ($0.12)",
+          "[00:00.018] Step 2: Recursive retrieval cycle -> 85,000 prompt tokens ($0.95)",
+          "[00:00.022] ⚠️ Total run cost ($1.07) exceeds per-run ceiling limit ($1.00)",
+          "[00:00.024] 🛑 ≤ 24ms CIRCUIT TRIPPED: HTTP 429 BUDGET_EXCEEDED",
+          "[00:00.026] 🛡️ Upstream API paused. Run safely parked for human-in-the-loop review."
         ]);
         setSimStep("budget_tripped");
-      } else {
-        setSimLogs([
+      }, 350);
+    } else {
+      setTimeout(() => {
+        setIteration(3);
+        setSimLogs((prev) => [
+          ...prev,
           "[00:00.012] Step 1: Tool 'vector_search' -> state hash '10ac4...' (200 OK)",
           "[00:00.035] Step 2: Tool 'format_summary' -> state hash 'd8e92...' (200 OK)",
           "[00:00.052] Step 3: Tool 'dispatch_email' -> state hash '33fa1...' (200 OK)",
           "[00:00.060] ✅ Run completed successfully. 3 distinct state hashes, zero repetitions."
         ]);
         setSimStep("idle");
-      }
-    }, 600);
+      }, 400);
+    }
+  };
+
+  const resetSimulation = () => {
+    setSimStep("idle");
+    setIteration(0);
+    setSimLogs([
+      "[00:00.000] System nominal. Click 'Trigger Infinite Agent Loop' below to test deterministic circuit breaking."
+    ]);
   };
 
   return (
@@ -210,57 +260,172 @@ export function LandingPage() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider font-semibold">Test Probe:</span>
+            {/* Probe Action Buttons with Prominent Trigger Loop */}
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => runSimulation("loop")}
-                className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-all flex items-center gap-1"
+                disabled={simStep === "running"}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold bg-rose-600 text-white hover:bg-rose-700 active:scale-95 shadow-sm shadow-rose-600/30 transition-all flex items-center gap-1.5"
               >
-                <Zap className="w-3 h-3 text-rose-600" />
-                Trigger Loop
+                <Zap className="w-3.5 h-3.5 text-rose-200 animate-pulse" />
+                Trigger Infinite Agent Loop
               </button>
               <button
                 onClick={() => runSimulation("budget")}
-                className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all flex items-center gap-1"
+                disabled={simStep === "running"}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-all flex items-center gap-1"
               >
                 <Flame className="w-3 h-3 text-amber-600" />
                 Budget Spike
               </button>
               <button
                 onClick={() => runSimulation("normal")}
-                className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all flex items-center gap-1"
+                disabled={simStep === "running"}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all flex items-center gap-1"
               >
                 <Play className="w-3 h-3 text-emerald-600" />
-                Normal
+                Nominal
+              </button>
+              <button
+                onClick={resetSimulation}
+                title="Reset Simulation"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-all"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          {/* Terminal Stream View */}
-          <div className="p-5 font-mono text-xs sm:text-[13px] min-h-[160px] space-y-1.5 bg-slate-900 text-slate-200">
-            {simLogs.map((log, idx) => (
-              <div
-                key={idx}
-                className={
-                  log.includes("CIRCUIT BREAKER TRIPPED")
-                    ? "text-rose-400 font-bold bg-rose-950/40 p-1.5 rounded border border-rose-900/60"
-                    : log.includes("BLOCKED") || log.includes("Saved")
-                    ? "text-emerald-400 font-semibold"
-                    : log.includes("matches 4th time")
-                    ? "text-amber-400 font-semibold"
-                    : "text-slate-300"
-                }
-              >
-                {log}
+          {/* Sliding Window State Progression Bar */}
+          <div className="px-5 py-2.5 bg-slate-100/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider">Sliding Window (N=4):</span>
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4].map((step) => {
+                  const isActive = iteration >= step;
+                  const isTripStep = step === 4 && (simStep === "tripped" || iteration === 4);
+                  return (
+                    <span
+                      key={step}
+                      className={`inline-flex items-center justify-center w-6 h-6 rounded text-[11px] font-bold transition-all ${
+                        isTripStep
+                          ? "bg-rose-600 text-white ring-2 ring-rose-400 animate-pulse"
+                          : isActive
+                          ? "bg-amber-500 text-white"
+                          : "bg-slate-200 text-slate-500"
+                      }`}
+                    >
+                      {step}
+                    </span>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+
+            {/* Glowing Breaker Status Badge */}
+            <div>
+              {simStep === "tripped" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-300 font-bold text-[11px] animate-fade-in">
+                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
+                  🛑 ≤ 24ms CIRCUIT TRIPPED • SAVED ~$18.40
+                </span>
+              )}
+              {simStep === "budget_tripped" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[11px] animate-fade-in">
+                  <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
+                  ⚠️ HARD BUDGET CEILING TRIPPED ($1.00)
+                </span>
+              )}
+              {simStep === "running" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+                  INSPECTING CANONICAL HASHES...
+                </span>
+              )}
+              {simStep === "idle" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                  CIRCUIT ARMED & READY
+                </span>
+              )}
+            </div>
           </div>
 
+          {/* Sandbox Inner Navigation Tabs */}
+          <div className="px-5 pt-3 bg-slate-900 border-b border-slate-800 flex items-center gap-2">
+            <button
+              onClick={() => setSandboxTab("terminal")}
+              className={`pb-2 px-3 text-xs font-mono font-medium border-b-2 transition-all ${
+                sandboxTab === "terminal"
+                  ? "border-indigo-500 text-white"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Live SSE Telemetry Stream
+            </button>
+            <button
+              onClick={() => setSandboxTab("proxy")}
+              className={`pb-2 px-3 text-xs font-mono font-medium border-b-2 transition-all ${
+                sandboxTab === "proxy"
+                  ? "border-indigo-500 text-white"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              1-Line OpenAI Drop-in
+            </button>
+            <button
+              onClick={() => setSandboxTab("mcp")}
+              className={`pb-2 px-3 text-xs font-mono font-medium border-b-2 transition-all ${
+                sandboxTab === "mcp"
+                  ? "border-indigo-500 text-white"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Model Context Protocol (MCP)
+            </button>
+          </div>
+
+          {/* Sandbox Content Body */}
+          {sandboxTab === "terminal" ? (
+            <div className="p-5 font-mono text-xs sm:text-[13px] min-h-[175px] max-h-[220px] overflow-y-auto space-y-1.5 bg-slate-950 text-slate-200">
+              {simLogs.map((log, idx) => (
+                <div
+                  key={idx}
+                  className={
+                    log.includes("CIRCUIT TRIPPED")
+                      ? "text-rose-400 font-bold bg-rose-950/50 p-2 rounded border border-rose-900/70"
+                      : log.includes("PAUSED") || log.includes("Saved")
+                      ? "text-emerald-400 font-semibold"
+                      : log.includes("matches 4th time") || log.includes("exceeds per-run")
+                      ? "text-amber-300 font-semibold"
+                      : log.includes("⚠️")
+                      ? "text-amber-400"
+                      : "text-slate-300"
+                  }
+                >
+                  {log}
+                </div>
+              ))}
+            </div>
+          ) : sandboxTab === "proxy" ? (
+            <div className="p-5 font-mono text-xs sm:text-[13px] min-h-[175px] bg-slate-950 text-slate-200">
+              <pre className="overflow-x-auto text-emerald-400">
+                <code>{proxySnippet}</code>
+              </pre>
+            </div>
+          ) : (
+            <div className="p-5 font-mono text-xs sm:text-[13px] min-h-[175px] bg-slate-950 text-slate-200">
+              <pre className="overflow-x-auto text-indigo-300">
+                <code>{mcpSnippet}</code>
+              </pre>
+            </div>
+          )}
+
           {/* Breaker Telemetry Status Footer */}
-          <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono text-slate-600">
+          <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-600 gap-2">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              SLIDING_WINDOW: 4 steps • HASH: SHA-256
+              SLIDING_WINDOW: 4 steps • HASH: SHA-256 (Canonical JSON)
             </span>
             <span className="text-slate-500">TRIP LATENCY: ≤ 24ms p50 (Zero LLM overhead)</span>
           </div>

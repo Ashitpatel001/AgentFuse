@@ -5,12 +5,42 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cortexheal"
 version = "0.1.0"
-description = "Deterministic Detection Engine and Self-Healing Platform for AI Agents"
+description = "The Deterministic Circuit Breaker & Safety Firewall for Autonomous AI Agents"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "CortexHeal Team", email = "team@cortexheal.dev" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Monitoring",
+    "Topic :: Security",
+]
+keywords = [
+    "ai",
+    "agents",
+    "circuit-breaker",
+    "langgraph",
+    "autogen",
+    "crewai",
+    "mcp",
+    "model-context-protocol",
+    "llm-safety",
+    "observability",
+    "firewall",
+    "deterministic",
+    "token-guard"
 ]
 dependencies = [
     "pydantic>=2.0.0",
@@ -29,6 +59,13 @@ dependencies = [
     "httpx>=0.24.0"
 ]
 
+[project.urls]
+Homepage = "https://github.com/Ashitpatel001/Cortexheal"
+Documentation = "https://github.com/Ashitpatel001/Cortexheal#readme"
+Repository = "https://github.com/Ashitpatel001/Cortexheal.git"
+Issues = "https://github.com/Ashitpatel001/Cortexheal/issues"
+Changelog = "https://github.com/Ashitpatel001/Cortexheal/blob/main/CHANGELOG.md"
+
 [project.scripts]
 cortexheal = "cortexheal.cli.main:cli"
 
@@ -36,12 +73,23 @@ cortexheal = "cortexheal.cli.main:cli"
 langgraph = ["langgraph>=0.0.10", "langchain-core>=0.1.0"]
 autogen = ["pyautogen>=0.2.0"]
 mcp = ["mcp>=1.0.0"]
+all = [
+    "langgraph>=0.0.10",
+    "langchain-core>=0.1.0",
+    "pyautogen>=0.2.0",
+    "mcp>=1.0.0"
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-timeout>=2.0.0",
-    "httpx>=0.24.0"
+    "httpx>=0.24.0",
+    "build>=1.0.0",
+    "twine>=4.0.0"
 ]
 
 [tool.setuptools.packages.find]
 include = ["cortexheal*"]
+
+[tool.setuptools.package-data]
+cortexheal = ["py.typed"]
