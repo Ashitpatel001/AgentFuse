@@ -4,6 +4,9 @@
   <a href="https://github.com/Ashitpatel001/Cortexheal">
     <img src="https://img.shields.io/github/stars/Ashitpatel001/Cortexheal?style=for-the-badge&logo=github&color=6320ee&label=Stars" alt="GitHub Stars" />
   </a>
+  <a href="https://pypi.org/project/cortexheal/">
+    <img src="https://img.shields.io/pypi/v/cortexheal?style=for-the-badge&color=blue&logo=pypi&logoColor=white" alt="PyPI Version" />
+  </a>
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge" alt="License" />
   </a>
@@ -20,71 +23,99 @@
 
 <p align="center">
   <strong>The Automated Circuit Breaker & Safety Firewall for Autonomous AI Agents.</strong><br />
-  Stops runaway tool loops and budget spikes in <strong>≤ 24 milliseconds</strong> with mathematical SHA-256 state equality — zero LLM hallucinations in the safety path.
+  Stops runaway tool loops and budget overruns in <strong>≤ 24 milliseconds</strong> with mathematical SHA-256 state equality — zero LLM hallucinations in the safety path.
 </p>
 
 <p align="center">
   <a href="#quickstart">Quickstart</a> •
-  <a href="#dual-integration-modes">Integration Modes</a> •
-  <a href="#architecture">Architecture</a> •
+  <a href="#the-zero-code-gateway-demo-primary-hook">Zero-Code Gateway</a> •
+  <a href="#model-context-protocol-mcp">MCP Integration</a> •
   <a href="#benchmarks">Benchmarks</a> •
+  <a href="CONTRIBUTING.md">Contributing</a> •
   <a href="DEPLOYMENT.md">Bare-Metal Guide</a>
 </p>
 
 ---
 
-## Why CortexHeal?
+## The Zero-Code Gateway Demo (Primary Hook)
 
-Every time an autonomous agent gets stuck in a tool loop (e.g., repeatedly querying a malformed API or scanning empty partitions with identical arguments), it burns **$200 to $500 in tokens** in minutes and risks corrupting production databases.
-
-### The Deterministic Imperative (Zero LLMs in the Safety Loop)
-Most observability tools attempt to solve agent safety by introducing a secondary **"LLM-as-a-Judge"**. This introduces three critical flaws:
-1. **Compounding Latency**: Calling an LLM at every step adds 500ms–2,500ms of latency per tool call.
-2. **Probabilistic Rulings**: An LLM judge can hallucinate, flip verdicts across identical states, or be jailbroken by the agent's context.
-3. **Cascading Failure**: When the upstream LLM provider suffers an outage, the safety system fails simultaneously.
-
-**CortexHeal uses 100% deterministic evaluation**:
-- **O(1) SHA-256 Canonical Fingerprinting**: Tool arguments and normalized outputs are hashed and tracked in in-memory ring buffers.
-- **Mathematical Threshold Bounds**: Strict token usage, cost accumulation, and repetition limits trip instantly without model inference.
-- **Sub-Millisecond Queue Handover**: 0.15ms non-blocking queue push prevents blocking agent execution threads.
-- **100% Free & Open-Source**: Apache 2.0 licensed, zero token markups, zero vendor lock-in.
-
----
-
-## Dual Integration Modes
-
-CortexHeal supports two integration models depending on your fleet architecture:
-
-### Mode 1: Zero-Code OpenAI Proxy Gateway (30-Second Onboarding)
-Point `base_url` to CortexHeal. Works out of the box with LangChain, CrewAI, AutoGen, or raw OpenAI/Anthropic SDKs. Uses your own API keys (**BYOK**).
+Connect your existing agents to CortexHeal in **30 seconds** with a single line change. Works with OpenAI SDK, LangChain, CrewAI, AutoGen, and custom agents:
 
 ```python
 from openai import OpenAI
 
-# Drop-in: Point base_url to CortexHeal Circuit Breaker
+# 1-line change: point base_url to CortexHeal Gateway
 client = OpenAI(
-    base_url="http://localhost:8000/v1",  # CortexHeal Gateway
-    api_key="sk-your-openai-key",          # Your own OpenAI key (BYOK)
-    default_headers={"X-Agent-ID": "finance_reconciliation_agent"}
+    base_url="http://localhost:8000/v1",  # Or https://api.cortexheal.dev/v1
+    api_key="your-cortexheal-key",        # BYOK: Upstream bills directly
+    default_headers={"X-Agent-ID": "reconciliation_agent"}
 )
 
-# If this agent repeats identical prompts/tool calls (N >= 4),
-# CortexHeal trips in ≤ 24ms and returns HTTP 429 BEFORE calling OpenAI!
+# Agent continues using OpenAI normally; CortexHeal intercepts runaway tool loops
+# in <= 24ms and returns HTTP 429 BEFORE the request reaches the LLM provider!
 response = client.chat.completions.create(
     model="gpt-4o",
-    messages=[{"role": "user", "content": "Reconcile ledger credits..."}]
+    messages=[{"role": "user", "content": "Execute database sync tasks..."}]
 )
 ```
 
+---
+
+## Installation via PyPI
+
+Install the core package:
+
+```bash
+pip install cortexheal
+```
+
+Install optional ecosystem adapters:
+
+```bash
+# LangGraph state suspension & interrupt support
+pip install "cortexheal[langgraph]"
+
+# AutoGen safety gate support
+pip install "cortexheal[autogen]"
+
+# Model Context Protocol (MCP) server support
+pip install "cortexheal[mcp]"
+
+# Install all adapters and integrations
+pip install "cortexheal[all]"
+```
+
+---
+
+## Why CortexHeal?
+
+When an autonomous agent enters a recursive failure loop (e.g., repeatedly calling a tool with identical parameters), it can burn **$200 to $500 in tokens** within minutes and risk corrupting production data.
+
+### Deterministic Safety vs. LLM-as-a-Judge
+
+| Metric | LLM-as-a-Judge | CortexHeal Deterministic Breaker |
+| :--- | :---: | :---: |
+| **Trip Latency** | 800ms – 2,500ms | **≤ 24ms (p50)** |
+| **Evaluation Cost** | 2x Token Burn | **$0.00 (Pure In-Memory Compute)** |
+| **Reliability** | Probabilistic (May Hallucinate) | **100% Deterministic SHA-256 Hashing** |
+| **Safety Queue Overhead** | Blocking HTTP Calls | **0.15ms Non-Blocking Queue Push** |
+| **Upstream Outage Impact** | Safety Engine Fails | **Completely Independent & Resilient** |
+
+---
+
+## Integration Modes
+
+### Mode 1: Zero-Code OpenAI Proxy Gateway
+Point `base_url` to CortexHeal. All LLM tool calls and prompt hashes pass through our sliding window detector. On the 4th identical repetition, the circuit trips immediately.
+
 ### Mode 2: In-Process LangGraph State Suspension (`interrupt()`)
-Physically pause graph execution inside LangGraph's DAG and resume state safely without cold restarting containers.
+For deep graph workflows, attach the native safety gate to physically suspend execution without cold-restarting worker processes:
 
 ```python
 from cortexheal import CortexHeal
 from cortexheal.adapters.langgraph import LangGraphAdapter
 from langgraph.graph import StateGraph
 
-# 1. Initialize adapter and attach SafetyGate
 adapter = LangGraphAdapter(agent_id="customer_support_agent")
 cortex  = CortexHeal(adapter=adapter)
 
@@ -100,6 +131,34 @@ graph = builder.compile()
 
 ---
 
+## Model Context Protocol (MCP)
+
+CortexHeal provides a native MCP server for developers using **Claude Desktop**, **Cursor**, or **Windsurf**:
+
+### Run via CLI
+```bash
+cortexheal mcp
+```
+
+### Claude Desktop Configuration (`claude_desktop_config.json`)
+```json
+{
+  "mcpServers": {
+    "cortexheal": {
+      "command": "cortexheal",
+      "args": ["mcp"],
+      "env": {
+        "DATABASE_URL": "postgresql://cortexheal:cortexpassword@localhost:5433/cortexheal_db"
+      }
+    }
+  }
+}
+```
+
+Provides live MCP tools: `list_open_incidents`, `get_incident_details`, and `get_run_timeline`. See [docs/MCP_INTEGRATION.md](docs/MCP_INTEGRATION.md) for full setup instructions.
+
+---
+
 ## Quickstart (60 Seconds with Docker)
 
 ### 1. Clone & Run with Docker Compose
@@ -110,101 +169,51 @@ cd Cortexheal
 # Start PostgreSQL 15 & Redis containers
 docker compose up -d
 
-# Reseed database with realistic demo runs, incidents & user accounts
+# Seed database with realistic agent runs and incidents
 python scripts/reseed_demo_data.py
 ```
 
-### 2. Start the Control Plane Server
+### 2. Start the Control Plane API
 ```bash
-# Start FastAPI Control Plane & Proxy Gateway on port 8000
 python -m uvicorn cortexheal.server.api:app --host 0.0.0.0 --port 8000
 ```
 
-### 3. Test the Circuit Breaker Live
-Run our built-in zero-code proxy demo:
+### 3. Run Live Interactive Demo
 ```bash
 python examples/demo_proxy_gateway.py
 ```
-Observe calls 1–3 pass normally in $\le 11$ms, and call 4 instantly trips with **`HTTP 429 STUCK_LOOP_TRIPPED`**, saving upstream tokens and dispatching an incident to the dashboard.
 
-### 4. Launch Web Interfaces
-- **Datadog-Grade APM Dashboard**: `http://localhost:5173` (or `http://localhost:8000`)
-  - Login with quick-fill `admin@cortexheal.com / admin123` or click **"View Live Public Demo"**.
-- **White Marketing Site**: `http://localhost:3001`
-  - Interactive live circuit breaker terminal and runaway loss ROI calculator.
-
----
-
-## Architecture
-
-```mermaid
-flowchart TD
-    subgraph Agent Runtime [Agent Execution Plane - Customer VPC]
-        A[Agent Task / StateGraph] --> B[SafetyGate / Gateway Node]
-        B --> C[Agent Tool / LLM Call]
-        C -->|BYOK Telemetry| D[LangGraph / OpenAI Proxy]
-    end
-
-    subgraph CortexHeal Control Plane [Control Plane]
-        D -->|0.15ms Non-Blocking Queue| E[RuntimeCollector]
-        E --> F[Deterministic Hash Detection]
-        F -->|STUCK_LOOP / BUDGET_EXCEEDED| G[Protection Controller]
-        G -->|Status: pause_requested| H[(PostgreSQL 15)]
-        G -->|Outbound Webhooks| I[Alert Dispatcher]
-    end
-
-    subgraph Operations & Observability [Datadog Watchdog Console]
-        H -->|HTTP 429 / interrupt()| B
-        I -->|Slack Block Kit / PagerDuty| J[On-Call SRE Team]
-        H -->|Live SSE Stream| K[APM Incident Queue]
-        K -->|Human-in-the-Loop Approval| L[Recovery Engine]
-    end
-```
+### 4. Access Web Interfaces
+- **APM Telemetry Dashboard**: `http://localhost:5173` (Demo login: `admin@cortexheal.com` / `admin123`)
+- **Marketing & Safety Overview**: `http://localhost:3000`
 
 ---
 
 ## Benchmarks & Scale Verification
 
-Tested with **55 concurrent in-process LangGraph agents** running simultaneously against **55 persistent SSE streams**:
+Benchmarked against **55 concurrent in-process LangGraph agents** running with active persistent SSE streaming:
 
 | Metric | Measured Value | Scope / Boundary |
 | :--- | :---: | :--- |
-| **Telemetry Queue Handover (p50)** | **0.15 ms** | Agent thread non-blocking queue push |
-| **Telemetry Queue Handover (p95)** | **0.34 ms** | Agent thread non-blocking queue push |
-| **Full Pipeline Circuit-Break (p50)** | **~24.0 ms** | Ingest &rarr; Postgres &rarr; Detector hash &rarr; Pause update |
-| **Full Pipeline Circuit-Break (p95)** | **~94.0 ms** | 55-agent simultaneous burst under load |
-| **Event Loss Rate** | **0.0%** | Zero dropped events across all concurrent runs |
-| **Upstream LLM Token Cost on Trip** | **$0.00** | Request rejected before calling OpenAI/Anthropic |
+| **Telemetry Queue Handover (p50)** | **0.15 ms** | Non-blocking thread push |
+| **Full Pipeline Circuit-Break (p50)** | **≤ 24.0 ms** | Ingestion &rarr; Deduplication &rarr; Trip state |
+| **Event Loss Under Load** | **0.0%** | Zero lost events under backpressure |
+| **Upstream Token Cost on Trip** | **$0.00** | Request rejected before LLM provider invocation |
 
 ---
 
-## Tech Stack
-
-| Component | Technologies |
-| :--- | :--- |
-| **Control Plane API** | Python 3.11, FastAPI, Pydantic v2, Uvicorn, HTTPX |
-| **Database & Cache** | PostgreSQL 15 (`ThreadedConnectionPool`), Redis 7 |
-| **APM Dashboard** | React 19, TypeScript, Vite, Tailwind CSS v4, Lucide React, TanStack Query |
-| **Marketing Site** | React 19, Tailwind CSS v4, Datadog-inspired clean white palette |
-| **Testing** | Pytest, Pytest-Asyncio (141 passed tests) |
-
----
-
-## Testing
+## Testing & Quality
 
 ```bash
 # Run full automated test suite (141 tests)
 pytest tests/ -q
-
-# Run proxy gateway demo
-python examples/demo_proxy_gateway.py
-
-# Run LangGraph recoverable loop demo
-python examples/manual_recoverable_loop.py
 ```
 
 ---
 
-## License
+## License & Community
 
-Distributed under the **Apache 2.0 License**. See [`LICENSE`](LICENSE) for details. Built with ❤️ for the open-source autonomous AI community.
+- **License**: Distributed under the [Apache 2.0 License](LICENSE).
+- **Contributing**: Read our [Contributing Guidelines](CONTRIBUTING.md).
+- **Security**: For responsible vulnerability disclosure, refer to [SECURITY.md](SECURITY.md).
+- **Changelog**: View release history in [CHANGELOG.md](CHANGELOG.md).
