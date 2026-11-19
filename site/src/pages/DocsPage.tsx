@@ -55,41 +55,41 @@ export function DocsPage() {
               Quickstart Guide
             </h1>
             <p className="text-base text-slate-600 leading-relaxed">
-              Install the CortexHeal Python client and connect your agent execution graph in 3 steps.
+              Install the AgentFuse Python client and connect your agent execution graph in 3 steps.
             </p>
 
             <div className="space-y-3 pt-2">
               <h3 className="text-base font-bold text-slate-900">1. Install Package</h3>
               <pre className="bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-xs overflow-x-auto">
-                <code>pip install cortexheal</code>
+                <code>pip install agentfuse</code>
               </pre>
             </div>
 
             <div className="space-y-3 pt-4">
               <h3 className="text-base font-bold text-slate-900">2. Configure Environment</h3>
               <p className="text-sm text-slate-600">
-                Set the CortexHeal backend URL and your organization API key:
+                Set the AgentFuse backend URL and your organization API key:
               </p>
               <pre className="bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-xs overflow-x-auto">
-                <code>export CORTEXHEAL_API_URL="http://127.0.0.1:8000"
-export CORTEXHEAL_API_KEY="ctx_admin_prod_corp_001"</code>
+                <code>export AGENTFUSE_API_URL="http://127.0.0.1:8000"
+export AGENTFUSE_API_KEY="fuse_admin_prod_corp_001"</code>
               </pre>
             </div>
 
             <div className="space-y-3 pt-4">
               <h3 className="text-base font-bold text-slate-900">3. Attach SafetyGate in LangGraph</h3>
               <pre className="bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-xs overflow-x-auto">
-                <code>{`from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
+                <code>{`from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
 from langgraph.graph import StateGraph
 
 # Initialize adapter with unique agent ID
 adapter = LangGraphAdapter(agent_id="customer_service_agent")
-cortex = CortexHeal(adapter=adapter)
+fuse = AgentFuse(adapter=adapter)
 
 # Insert SafetyGate as entry point or tool guard
 builder = StateGraph(MyAgentState)
-builder.add_node("safety_gate", cortex.safety_gate)
+builder.add_node("safety_gate", fuse.safety_gate)
 builder.add_node("agent_worker", agent_worker_node)
 
 builder.set_entry_point("safety_gate")
@@ -104,7 +104,7 @@ builder.add_edge("safety_gate", "agent_worker")`}</code>
               Core Concepts & Architecture
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              CortexHeal enforces application-layer safety constraints without evaluating prompts with secondary language models. All circuit breakers operate on deterministic mathematics.
+              AgentFuse enforces application-layer safety constraints without evaluating prompts with secondary language models. All circuit breakers operate on deterministic mathematics.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

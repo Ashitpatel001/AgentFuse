@@ -78,10 +78,10 @@ export function BlogPostPage() {
             A circuit breaker must be <em>deterministic</em>. In electrical engineering, a fuse does not "think" or "reason"—it breaks when the physical current crosses a fixed amperage limit. Similarly, in distributed systems, network circuit breakers trip when HTTP error thresholds exceed 50% over a 10-second sliding window.
           </p>
           <p>
-            CortexHeal enforces this exact principle for AI agent fleets:
+            AgentFuse enforces this exact principle for AI agent fleets:
           </p>
           <pre className="bg-slate-900 text-emerald-400 p-4 rounded-xl font-mono text-xs overflow-x-auto">
-            <code>{`# Deterministic Hash Comparison in CortexHeal Safety Path
+            <code>{`# Deterministic Hash Comparison in AgentFuse Safety Path
 curr_hash = sha256(canonical_json(tool_name, arguments, normalized_response))
 if curr_hash == prev_hash:
     consecutive_repetitions += 1
@@ -93,7 +93,7 @@ if curr_hash == prev_hash:
             3. Separation of Safety Decision vs. Recovery Planning
           </h2>
           <p>
-            CortexHeal strictly decouples the <strong>Safety Decision Path</strong> from the <strong>Recovery Planning Path</strong>:
+            AgentFuse strictly decouples the <strong>Safety Decision Path</strong> from the <strong>Recovery Planning Path</strong>:
           </p>
           <ul className="space-y-2 list-disc pl-5">
             <li><strong>Safety Gate (Zero LLMs):</strong> Pausing execution is 100% deterministic (0.15ms in-process handover, ~26.5ms p50 full database pipeline). Zero network hops to external LLMs.</li>
@@ -135,7 +135,7 @@ if curr_hash == prev_hash:
             2. Verified Benchmark Evidence
           </h2>
           <p>
-            During our Phase 2 concurrent-scale verification, CortexHeal was tested against 55 simultaneous external agent runs (30 stuck loops, 25 budget overruns) alongside 55 persistent SSE client connections:
+            During our Phase 2 concurrent-scale verification, AgentFuse was tested against 55 simultaneous external agent runs (30 stuck loops, 25 budget overruns) alongside 55 persistent SSE client connections:
           </p>
           <ul className="space-y-2 list-disc pl-5">
             <li><strong>Accuracy:</strong> 55/55 incidents accurately attributed with 0% false positives and 0 dropped events.</li>
@@ -146,7 +146,7 @@ if curr_hash == prev_hash:
           <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-xl">
             <h4 className="font-bold text-emerald-900 text-sm mb-1">Summary</h4>
             <p className="text-xs text-emerald-800 leading-relaxed">
-              CortexHeal delivers the speed, predictability, and auditability required to operate agentic workflows in production environments without fear of runaway cost or infinite loops.
+              AgentFuse delivers the speed, predictability, and auditability required to operate agentic workflows in production environments without fear of runaway cost or infinite loops.
             </p>
           </div>
         </div>

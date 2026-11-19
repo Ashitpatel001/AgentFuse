@@ -2,7 +2,7 @@ import { useState, useEffect, createContext, useContext } from "react";
 import type { ReactNode, FormEvent } from "react";
 import { api, setApiKey, clearApiKey, type AuthUser } from "../api";
 import { useQueryClient } from "@tanstack/react-query";
-import { Activity, PlayCircle, Loader2 } from "lucide-react";
+import { PlayCircle, Loader2, Zap } from "lucide-react";
 
 interface AuthState {
   user: AuthUser | null;
@@ -28,7 +28,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       try {
         const u = await api.me();
         setUser(u);
-        sessionStorage.setItem("cortexheal_role", u.role);
+        sessionStorage.setItem("agentfuse_role", u.role);
       } catch {
         setUser(null);
       } finally {
@@ -39,7 +39,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   async function finishLogin(u: AuthUser) {
     setUser(u);
-    sessionStorage.setItem("cortexheal_role", u.role);
+    sessionStorage.setItem("agentfuse_role", u.role);
   }
 
   async function handlePasswordLogin(e: FormEvent) {
@@ -113,14 +113,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <div className="bg-bg-raised/80 backdrop-blur-xl border border-border-default rounded-2xl p-8 shadow-2xl shadow-black/50">
             {/* Header */}
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center shadow-lg shadow-accent/20">
-                <Activity className="w-4 h-4 text-white" />
+              <div className="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-bold">
+                <Zap className="w-5 h-5 fill-current" />
               </div>
               <div>
-                <div className="text-[17px] font-bold text-text-primary tracking-tight">
-                  CortexHeal
+                <div className="text-[18px] font-extrabold text-text-primary tracking-tight font-sans">
+                  Agent<span className="text-amber-500">Fuse</span>
                 </div>
-                <div className="text-[11px] text-text-muted font-medium">Control Plane</div>
+                <div className="text-[11px] text-text-muted font-medium">Control Plane & Safety Console</div>
               </div>
             </div>
 

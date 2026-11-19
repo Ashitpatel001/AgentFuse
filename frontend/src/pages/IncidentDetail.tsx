@@ -61,7 +61,7 @@ export function IncidentDetail() {
     isViewer || approveMutation.isPending || rejectMutation.isPending || resumeMutation.isPending;
 
   const handleCopyContext = () => {
-    const ctx = `CortexHeal Incident Context
+    const ctx = `AgentFuse Incident Context
 ID: ${incident.incident_id}
 Run ID: ${incident.run_id}
 Agent ID: ${incident.agent_id}

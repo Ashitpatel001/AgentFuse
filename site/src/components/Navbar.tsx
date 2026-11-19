@@ -13,15 +13,15 @@ export function Navbar({ onOpenSignUp }: NavbarProps = {}) {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-sm shadow-indigo-600/25 group-hover:bg-indigo-700 transition-all">
-              <Shield className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-slate-950 shadow-sm shadow-amber-500/25 group-hover:bg-amber-400 transition-all">
+              <Zap className="w-4 h-4 fill-current" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[16px] font-bold text-slate-900 tracking-tight">
-                CortexHeal
+              <span className="text-[17px] font-extrabold text-slate-900 tracking-tight font-sans">
+                Agent<span className="text-amber-500">Fuse</span>
               </span>
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
-                AI Firewall
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                24ms Breaker
               </span>
             </div>
           </Link>
