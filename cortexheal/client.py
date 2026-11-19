@@ -53,3 +53,7 @@ class CortexHeal:
     def telemetry(self) -> Any:
         """Returns the framework-specific telemetry callback handler."""
         return self._telemetry
+
+
+# Backward-compatible and primary alias
+AgentFuse = CortexHeal

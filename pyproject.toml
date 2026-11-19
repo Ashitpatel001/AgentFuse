@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cortexheal"
+name = "agentfuse"
 version = "0.1.0"
-description = "The Deterministic Circuit Breaker & Safety Firewall for Autonomous AI Agents"
+description = "The 24ms Circuit Breaker & Safety Firewall for Autonomous AI Agents"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 authors = [
-    { name = "CortexHeal Team", email = "team@cortexheal.dev" }
+    { name = "AgentFuse Team", email = "team@agentfuse.dev" }
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -30,6 +30,7 @@ classifiers = [
 keywords = [
     "ai",
     "agents",
+    "agentfuse",
     "circuit-breaker",
     "langgraph",
     "autogen",
@@ -67,6 +68,7 @@ Issues = "https://github.com/Ashitpatel001/Cortexheal/issues"
 Changelog = "https://github.com/Ashitpatel001/Cortexheal/blob/main/CHANGELOG.md"
 
 [project.scripts]
+agentfuse = "cortexheal.cli.main:cli"
 cortexheal = "cortexheal.cli.main:cli"
 
 [project.optional-dependencies]
@@ -89,7 +91,8 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["cortexheal*"]
+include = ["agentfuse*", "cortexheal*"]
 
 [tool.setuptools.package-data]
+agentfuse = ["py.typed"]
 cortexheal = ["py.typed"]

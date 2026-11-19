@@ -45,7 +45,7 @@ export function LiveMonitoringPreview() {
             <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
           </div>
           <span className="text-xs font-mono text-slate-400 pl-2 border-l border-slate-800">
-            cortexheal-watchdog // live telemetry inspector
+            agentfuse-watchdog // live telemetry inspector
           </span>
         </div>
 
@@ -388,7 +388,7 @@ export function LiveMonitoringPreview() {
               <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 text-[10px] text-slate-400 space-y-0.5">
                 <div className="flex justify-between">
                   <span>Detection Engine:</span>
-                  <span className="text-slate-200">cortexheal.detection.stuck_loop</span>
+                  <span className="text-slate-200">agentfuse.detection.stuck_loop</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Storage Engine:</span>

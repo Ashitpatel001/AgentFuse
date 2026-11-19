@@ -9,17 +9,17 @@ export const BLOG_POSTS = [
     excerpt: "Using an LLM judge to evaluate whether another LLM agent is stuck or burning budget introduces latency compounding, non-reproducible rulings, and failure cascade risks. Here is why deterministic control planes are mathematically mandatory.",
     date: "August 2026",
     readTime: "7 min read",
-    author: "CortexHeal Systems Engineering",
+    author: "AgentFuse Systems Engineering",
     category: "Architecture & Systems Safety",
     icon: ShieldAlert
   },
   {
     slug: "sub-millisecond-circuit-breakers",
-    title: "Real-Time Circuit Breakers: How CortexHeal Protects Agent Fleets at Scale",
+    title: "Real-Time Circuit Breakers: How AgentFuse Protects Agent Fleets at Scale",
     excerpt: "A deep dive into our concurrent ring buffer, 0.15ms in-process telemetry handover, zero-lock memory caches, and PostgreSQL connection pooling under 50+ parallel agent streams.",
     date: "August 2026",
     readTime: "9 min read",
-    author: "CortexHeal Core Team",
+    author: "AgentFuse Core Team",
     category: "Performance & Scaling",
     icon: Cpu
   }
@@ -33,7 +33,7 @@ export function BlogListPage() {
           <BookOpen className="w-3.5 h-3.5" /> Engineering &amp; Architecture Essays
         </div>
         <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
-          CortexHeal Engineering Blog
+          AgentFuse Engineering Blog
         </h1>
         <p className="text-base sm:text-lg text-slate-600">
           In-depth technical analyses on deterministic AI safety, concurrency control planes, and agent fleet reliability.

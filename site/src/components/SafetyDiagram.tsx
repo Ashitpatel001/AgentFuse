@@ -61,7 +61,7 @@ export function SafetyDiagram() {
             Deterministic Protection Architecture
           </div>
           <h3 className="text-xl font-bold text-slate-900 tracking-tight">
-            How CortexHeal Halts Runaway Loops in 4 Steps
+            How AgentFuse Halts Runaway Loops in 4 Steps
           </h3>
         </div>
         <div className="flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-mono font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80">

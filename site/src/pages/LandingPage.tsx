@@ -32,37 +32,37 @@ const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || "http://localhost:51
 
 const proxySnippet = `from openai import OpenAI
 
-# 1-Line Drop-in: Point base_url to CortexHeal Gateway
+# 1-Line Drop-in: Point base_url to AgentFuse Gateway
 # Use your own OpenAI API key (BYOK) — OpenAI bills you directly
 client = OpenAI(
-    base_url="https://api.cortexheal.com/v1",  # CortexHeal Circuit Breaker
+    base_url="https://api.agentfuse.dev/v1",  # AgentFuse Circuit Breaker
     api_key="sk-your-openai-key",
     default_headers={"X-Agent-ID": "finance_reconciliation_agent"}
 )
 
-# If this agent repeats identical tool calls (N >= 4), CortexHeal
+# If this agent repeats identical tool calls (N >= 4), AgentFuse
 # trips in 24ms and returns HTTP 429 BEFORE calling OpenAI!
 response = client.chat.completions.create(
     model="gpt-4o",
     messages=[{"role": "user", "content": "Reconcile unallocated ledger credits..."}]
 )`;
 
-const codeSnippet = `from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
+const codeSnippet = `from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
 
 # In-Process Resumption: Attach SafetyGate to your LangGraph DAG
 adapter = LangGraphAdapter(agent_id="support_router")
-cortex  = CortexHeal(adapter=adapter)
+fuse    = AgentFuse(adapter=adapter)
 
 # Physically pauses graph with interrupt() — resume without restart
-builder.add_node("safety_gate", cortex.safety_gate)
+builder.add_node("safety_gate", fuse.safety_gate)
 builder.set_entry_point("safety_gate")`;
 
 const mcpSnippet = `// In claude_desktop_config.json or .cursor/mcp.json
 {
   "mcpServers": {
-    "cortexheal": {
-      "command": "cortexheal",
+    "agentfuse": {
+      "command": "agentfuse",
       "args": ["mcp"],
       "env": {
         "DATABASE_URL": "postgresql://cortexheal:cortexpassword@localhost:5433/cortexheal_db"
@@ -193,7 +193,7 @@ export function LandingPage() {
         {/* Eyebrow Announcement Pill */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200/80 bg-indigo-50/80 text-indigo-700 text-[11px] font-mono font-semibold mb-7 shadow-sm animate-fade-up">
           <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-          <span>NEW: Watchdog AI Automated Circuit Breaker for Autonomous Agents</span>
+          <span>NEW: AgentFuse Automated Circuit Breaker for Autonomous Agents</span>
           <ChevronRight className="w-3.5 h-3.5 text-indigo-500" />
         </div>
 
@@ -207,7 +207,7 @@ export function LandingPage() {
 
         {/* Hero Subtitle */}
         <p className="mt-6 text-[17px] sm:text-[19px] text-slate-600 max-w-2xl mx-auto leading-relaxed animate-fade-up" style={{ animationDelay: "160ms" }}>
-          Every time an enterprise agent gets stuck in a tool loop, it burns $200–$500 in tokens and risks corrupting production databases. CortexHeal is the deterministic circuit breaker that stops loops in <strong>24 milliseconds</strong> — <span className="text-slate-900 font-semibold">zero LLM hallucinations in the safety path.</span>
+          Every time an enterprise agent gets stuck in a tool loop, it burns $200–$500 in tokens and risks corrupting production databases. AgentFuse is the deterministic circuit breaker that stops loops in <strong>24 milliseconds</strong> — <span className="text-slate-900 font-semibold">zero LLM hallucinations in the safety path.</span>
         </p>
 
         {/* Primary Action Buttons */}
@@ -256,7 +256,7 @@ export function LandingPage() {
               </div>
               <span className="text-xs font-mono font-medium text-slate-700 pl-2 border-l border-slate-200 flex items-center gap-1.5">
                 <Terminal className="w-3.5 h-3.5 text-indigo-600" />
-                cortexheal-gateway // live breaker inspection
+                agentfuse-gateway // live breaker inspection
               </span>
             </div>
 
@@ -485,7 +485,7 @@ export function LandingPage() {
                 Calculate your rogue agent risk
               </h3>
               <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                Autonomous agents in tool loops query LLMs recursively. Adjust your fleet parameters to see the runaway token bill CortexHeal eliminates.
+                Autonomous agents in tool loops query LLMs recursively. Adjust your fleet parameters to see the runaway token bill AgentFuse eliminates.
               </p>
 
               {/* Sliders */}
@@ -628,7 +628,7 @@ export function LandingPage() {
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span>{activeTab === "proxy" ? "BYOK token economics — CortexHeal incurs zero upstream LLM bills" : "Zero cold-restart required: resume state right where it halted"}</span>
+                <span>{activeTab === "proxy" ? "BYOK token economics — AgentFuse incurs zero upstream LLM bills" : "Zero cold-restart required: resume state right where it halted"}</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />

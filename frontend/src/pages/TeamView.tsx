@@ -6,7 +6,7 @@ import { Badge, Button, LoadingState, ErrorState, EmptyState } from "../componen
 
 export function TeamView() {
   const queryClient = useQueryClient();
-  const role = sessionStorage.getItem("cortexheal_role") as string | null;
+  const role = sessionStorage.getItem("agentfuse_role") as string | null;
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("OPERATOR");

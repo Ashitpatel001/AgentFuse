@@ -43,7 +43,7 @@ export function AcceptInvite() {
             </div>
             <div>
               <div className="text-[17px] font-bold text-text-primary tracking-tight">Accept Invitation</div>
-              <div className="text-[11px] text-text-muted font-medium">CortexHeal Control Plane</div>
+              <div className="text-[11px] text-text-muted font-medium">AgentFuse Control Plane</div>
             </div>
           </div>
 
@@ -54,7 +54,7 @@ export function AcceptInvite() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-[13px] text-text-tertiary">
-                Set a password to activate your CortexHeal account.
+                Set a password to activate your AgentFuse account.
               </p>
               <div>
                 <label htmlFor="pw" className="block text-[12px] font-medium text-text-tertiary mb-1.5">

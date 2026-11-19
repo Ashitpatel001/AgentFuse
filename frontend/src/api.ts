@@ -10,15 +10,15 @@ class ApiError extends Error {
 }
 
 export function getApiKey(): string | null {
-  return sessionStorage.getItem("cortexheal_api_key");
+  return sessionStorage.getItem("agentfuse_api_key");
 }
 
 export function setApiKey(key: string) {
-  sessionStorage.setItem("cortexheal_api_key", key);
+  sessionStorage.setItem("agentfuse_api_key", key);
 }
 
 export function clearApiKey() {
-  sessionStorage.removeItem("cortexheal_api_key");
+  sessionStorage.removeItem("agentfuse_api_key");
 }
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
@@ -157,7 +157,7 @@ export const api = {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `cortexheal_audit_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `agentfuse_audit_export_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -168,7 +168,7 @@ export const api = {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `cortexheal_audit_export_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `agentfuse_audit_export_${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();

@@ -27,7 +27,7 @@ export function SignUpModal({ isOpen, onClose, defaultPlan = "Developer" }: Sign
     setGeneratedKey(key);
     
     try {
-      sessionStorage.setItem("cortexheal_api_key", key);
+      sessionStorage.setItem("agentfuse_api_key", key);
     } catch {
       // ignore
     }
@@ -63,7 +63,7 @@ export function SignUpModal({ isOpen, onClose, defaultPlan = "Developer" }: Sign
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                  {step === "form" ? "Provision CortexHeal Key" : "Your API Key is Ready"}
+                  {step === "form" ? "Provision AgentFuse Key" : "Your API Key is Ready"}
                 </h3>
                 <p className="text-[11px] text-slate-500 font-mono">
                   100% Free & Open Source • Zero Telemetry Egress
@@ -160,7 +160,7 @@ export function SignUpModal({ isOpen, onClose, defaultPlan = "Developer" }: Sign
                   >
                     <option value="bare-metal">Self-Hosted Bare-Metal</option>
                     <option value="docker">Docker Compose</option>
-                    <option value="cloud">CortexHeal Cloud Gateway</option>
+                    <option value="cloud">AgentFuse Cloud Gateway</option>
                   </select>
                 </div>
               </div>

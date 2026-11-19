@@ -1,4 +1,4 @@
-import { Activity, Shield, Code2, ArrowUpRight } from "lucide-react";
+import { Activity, Shield, Code2, ArrowUpRight, Zap } from "lucide-react";
 
 export function Footer() {
   return (
@@ -8,17 +8,17 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-3 md:col-span-1">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center text-white">
-                <Shield className="w-3.5 h-3.5" />
+              <div className="w-6 h-6 bg-amber-500 rounded-md flex items-center justify-center text-slate-950 font-bold">
+                <Zap className="w-3.5 h-3.5 fill-current" />
               </div>
-              <span className="text-[15px] font-bold text-slate-900 tracking-tight">CortexHeal</span>
+              <span className="text-[16px] font-extrabold text-slate-900 tracking-tight">Agent<span className="text-amber-500">Fuse</span></span>
             </div>
             <p className="text-[12px] text-slate-500 leading-relaxed">
-              The automated circuit breaker and safety firewall for autonomous AI agents. Deterministic loop prevention in ≤24 milliseconds.
+              The 24ms circuit breaker and safety firewall for autonomous AI agents. Stops runaway tool loops before they burn your budget.
             </p>
             <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-700 pt-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Systems Nominal • v1.0 Production
+              Fuse Armed • v0.1.0 Production
             </div>
           </div>
 
@@ -56,7 +56,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-slate-200 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
-          <p>© {new Date().getFullYear()} CortexHeal, Inc. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} AgentFuse, Inc. All rights reserved.</p>
           <p className="font-mono">Engineered for mission-critical autonomous workloads.</p>
         </div>
       </div>

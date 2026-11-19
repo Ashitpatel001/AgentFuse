@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Activity, ShieldAlert, LogOut, Download, Server, KeyRound, Users, Layers, ExternalLink } from "lucide-react";
+import { Activity, ShieldAlert, LogOut, Download, Server, KeyRound, Users, Layers, ExternalLink, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useSSE } from "../sse";
 import { useAuth } from "./AuthGate";
@@ -97,14 +97,14 @@ export function Layout() {
       <aside className="w-[220px] flex flex-col border-r border-border-subtle bg-bg-raised/40">
         {/* Logo */}
         <div className="h-14 px-4 flex items-center gap-2.5 border-b border-border-subtle/40">
-          <div className="w-7 h-7 bg-accent rounded-lg flex items-center justify-center shadow-sm shadow-blue-500/20">
-            <Activity className="w-3.5 h-3.5 text-white" />
+          <div className="w-7 h-7 bg-amber-500 rounded-lg flex items-center justify-center text-slate-950 shadow-sm shadow-amber-500/20">
+            <Zap className="w-4 h-4 fill-current text-slate-950" />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[15px] font-bold text-text-primary tracking-tight">
-              CortexHeal
+            <span className="text-[15px] font-extrabold text-text-primary tracking-tight font-sans">
+              Agent<span className="text-amber-500">Fuse</span>
             </span>
-            <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-bg-overlay border border-border-subtle text-accent">
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">
               CONSOLE
             </span>
           </div>

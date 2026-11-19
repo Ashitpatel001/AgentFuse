@@ -6,7 +6,7 @@ import { Badge, Button, LoadingState, ErrorState, EmptyState } from "../componen
 
 export function ApiKeysView() {
   const queryClient = useQueryClient();
-  const role = sessionStorage.getItem("cortexheal_role") as any;
+  const role = sessionStorage.getItem("agentfuse_role") as any;
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("VIEWER");
