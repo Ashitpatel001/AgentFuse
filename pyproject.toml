@@ -93,4 +93,4 @@ dev = [
 include = ["agentfuse*"]
 
 [tool.setuptools.package-data]
-agentfuse = ["py.typed"]
+agentfuse = ["py.typed", "server/static/**/*"]

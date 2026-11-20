@@ -2,5 +2,6 @@ include README.md
 include LICENSE
 include pyproject.toml
 recursive-include migrations *.py *.sql
+recursive-include agentfuse/server/static *
 recursive-include docs *.md *.png
 recursive-include examples *.py *.md
