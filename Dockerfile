@@ -35,12 +35,13 @@ RUN pip install --no-cache-dir .
 RUN useradd -m agentfuseuser && chown -R agentfuseuser:agentfuseuser /app
 USER agentfuseuser
 
-# Add HEALTHCHECK
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
-
-# Expose port
+# Expose port (default 8000)
+ENV PORT=8000
 EXPOSE 8000
 
-# Start Uvicorn server
-CMD ["uvicorn", "agentfuse.server.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Add HEALTHCHECK
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Start Uvicorn server (respects PORT dynamically while defaulting to 8000)
+CMD ["sh", "-c", "exec uvicorn agentfuse.server.api:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${AGENTFUSE_WORKERS:-4}"]
