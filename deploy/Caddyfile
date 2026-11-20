@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════
-# CortexHeal — Caddy Reverse Proxy Configuration
+# AgentFuse — Caddy Reverse Proxy Configuration
 # ═══════════════════════════════════════════════════════════
 # Place this file at /etc/caddy/Caddyfile on the host.
 # Caddy will automatically provision Let's Encrypt TLS certs
@@ -34,14 +34,14 @@ YOURDOMAIN.com, www.YOURDOMAIN.com {
 
     # 5. Dashboard SPA (/dashboard)
     handle /dashboard* {
-        root * /opt/cortexheal/app/frontend/dist
+        root * /opt/agentfuse/app/frontend/dist
         uri strip_prefix /dashboard
         try_files {path} /index.html
         file_server
     }
 
     # 6. Public Marketing & Safety Docs Site (Catch-all)
-    root * /opt/cortexheal/app/site/dist
+    root * /opt/agentfuse/app/site/dist
     try_files {path} /index.html
     file_server
 
@@ -58,14 +58,14 @@ YOURDOMAIN.com, www.YOURDOMAIN.com {
 # }
 #
 # app.YOURDOMAIN.com {
-#     root * /opt/cortexheal/app/frontend/dist
+#     root * /opt/agentfuse/app/frontend/dist
 #     try_files {path} /index.html
 #     file_server
 #     encode gzip zstd
 # }
 #
 # YOURDOMAIN.com, www.YOURDOMAIN.com {
-#     root * /opt/cortexheal/app/site/dist
+#     root * /opt/agentfuse/app/site/dist
 #     try_files {path} /index.html
 #     file_server
 #     encode gzip zstd

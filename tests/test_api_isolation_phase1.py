@@ -17,10 +17,10 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from cortexheal.server.api import app
-from cortexheal.storage.postgres import get_connection, init_db, save_recovery_plan
-from cortexheal.models.auth import hash_key
-from cortexheal.models.recovery import RecoveryPlan, RecoveryAction
+from agentfuse.server.api import app
+from agentfuse.storage.postgres import get_connection, init_db, save_recovery_plan
+from agentfuse.models.auth import hash_key
+from agentfuse.models.recovery import RecoveryPlan, RecoveryAction
 
 client = TestClient(app)
 

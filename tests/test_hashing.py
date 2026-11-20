@@ -1,5 +1,5 @@
 import pytest
-from cortexheal.runtime.hashing import deterministic_hash, serialize
+from agentfuse.runtime.hashing import deterministic_hash, serialize
 
 def test_deterministic_hash_same_object():
     obj1 = {"a": 1, "b": {"c": 2}, "d": [1, 2, 3]}

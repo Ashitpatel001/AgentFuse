@@ -1,6 +1,6 @@
-# CortexHeal Framework Support Matrix
+# AgentFuse Framework Support Matrix
 
-CortexHeal's Core is framework-agnostic. Framework Adapters normalize events into the `RuntimeEvent` contract and enforce the Safety Gate. Below is the support matrix for various AI frameworks.
+AgentFuse's Core is framework-agnostic. Framework Adapters normalize events into the `RuntimeEvent` contract and enforce the Safety Gate. Below is the support matrix for various AI frameworks.
 
 ## 1. LangGraph (Reference Implementation)
 *Status: **SUPPORTED***
@@ -33,7 +33,7 @@ CortexHeal's Core is framework-agnostic. Framework Adapters normalize events int
 
 ## 4. Custom Python Scripts (No Framework)
 *Status: **SUPPORTED***
-Users can instantiate the `CortexHealClient` and manually emit `RuntimeEvent` schemas and check `SafetyGate` functions manually.
+Users can instantiate the `AgentFuseClient` and manually emit `RuntimeEvent` schemas and check `SafetyGate` functions manually.
 
 ---
 
@@ -42,6 +42,6 @@ Users can instantiate the `CortexHealClient` and manually emit `RuntimeEvent` sc
 **Important**: 
 Not every framework supports the exact same protection mechanism. 
 - **LangGraph** offers native **Pause & Resume** by suspending the thread checkpoint. We can perfectly resume execution precisely where it paused.
-- **AutoGen** lacks native thread suspension. When CortexHeal pauses an AutoGen run, it must **abort** the agent loop (Fail Closed). Resuming requires the application developer to rebuild the conversation history and re-invoke the agent. 
+- **AutoGen** lacks native thread suspension. When AgentFuse pauses an AutoGen run, it must **abort** the agent loop (Fail Closed). Resuming requires the application developer to rebuild the conversation history and re-invoke the agent. 
 
 The Dashboard UI automatically reflects these capabilities via the Adapter's reported `framework_name`. For AutoGen, automated `RESUME` actions are flagged with a warning indicating that conversation reconstruction is required.

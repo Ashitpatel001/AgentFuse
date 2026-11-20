@@ -1,9 +1,9 @@
 import pytest
 import time
 from unittest.mock import patch, MagicMock
-from cortexheal.runtime.collector import RuntimeCollector
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.telemetry import metrics
+from agentfuse.runtime.collector import RuntimeCollector
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.telemetry import metrics
 
 def test_telemetry_backpressure_and_db_failure():
     # Create a collector with a tiny queue for testing

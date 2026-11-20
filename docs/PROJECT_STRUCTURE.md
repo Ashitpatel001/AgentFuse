@@ -1,10 +1,10 @@
-# CortexHeal Project Structure
+# AgentFuse Project Structure
 
-CortexHeal is a deterministic Detection Engine and Self-Healing Platform for AI Agents, deployed as a multi-tenant SaaS product.
+AgentFuse is a deterministic Detection Engine and Self-Healing Platform for AI Agents, deployed as a multi-tenant SaaS product.
 
 ## Core Directories
 
-- **`cortexheal/`**: The core library and application package.
+- **`agentfuse/`**: The core library and application package.
   - **`adapters/`**: Framework integrations (LangGraph, AutoGen, CrewAI stub).
   - **`detection/`**: Deterministic runtime detection engine (stuck loops, budget overruns).
   - **`protection/`**: Safely pauses agent execution via `ProtectionController`.
@@ -16,7 +16,7 @@ CortexHeal is a deterministic Detection Engine and Self-Healing Platform for AI 
   - **`storage/`**: PostgreSQL pool + CRUD (`postgres.py`), auth store (`auth_store.py`).
   - **`alerting/`**: Webhook dispatch (async, non-blocking).
   - **`telemetry/`**: Prometheus metrics and operational counters.
-  - **`cli/`**: Click CLI (`cortexheal start`, `create-org`, `retention`).
+  - **`cli/`**: Click CLI (`agentfuse start`, `create-org`, `retention`).
   - **`config.py`**: Pydantic Settings (env-driven).
   - **`client.py`**: Python SDK.
 - **`migrations/`**: yoyo-migrations (plain Python). `0001_baseline_schema.py` (full schema), `0002_auth_tables.py` (multi-tenant auth).
@@ -41,7 +41,7 @@ CortexHeal is a deterministic Detection Engine and Self-Healing Platform for AI 
 ## Architecture Guidelines
 
 - Deterministic safety decisions only — zero LLMs in the decision path.
-- Database access flows through the config-driven connection pool in `cortexheal/storage/postgres.py`.
+- Database access flows through the config-driven connection pool in `agentfuse/storage/postgres.py`.
 - All endpoints are org-scoped (tenant isolation enforced at the handler level).
 - Two-plane auth: API keys (machine, X-API-Key header) + argon2id sessions (human, HttpOnly cookie) → same RBAC.
 - Production credentials must never use dev-token defaults.

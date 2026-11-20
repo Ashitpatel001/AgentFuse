@@ -1,8 +1,8 @@
 """
-CortexHeal Demo: Deterministic Stuck-Loop Detection, Plan Approval & Recovery
+AgentFuse Demo: Deterministic Stuck-Loop Detection, Plan Approval & Recovery
 -----------------------------------------------------------------------------
 Demonstrates a customer support agent stuck in an empty database retry loop.
-CortexHeal deterministically trips a STUCK_LOOP incident after 4 identical iterations,
+AgentFuse deterministically trips a STUCK_LOOP incident after 4 identical iterations,
 pauses the execution, generates a deterministic recovery plan, applies the fix upon
 operator approval, and verifies recovery completion.
 """
@@ -13,13 +13,13 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
-from cortexheal.runtime.collector import collector
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.storage.postgres import get_run, get_incidents, update_run_status
-from cortexheal.protection.controller import ProtectionController
-from cortexheal.recovery.engine import RecoveryEngine
+from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
+from agentfuse.runtime.collector import collector
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.storage.postgres import get_run, get_incidents, update_run_status
+from agentfuse.protection.controller import ProtectionController
+from agentfuse.recovery.engine import RecoveryEngine
 
 class SupportAgentState(TypedDict):
     ticket_id: str
@@ -37,7 +37,7 @@ def main():
     agent_id = "support_ticket_router"
 
     adapter = LangGraphAdapter(agent_id=agent_id)
-    cortex = CortexHeal(adapter=adapter)
+    cortex = AgentFuse(adapter=adapter)
 
     # Initial start event
     collector.ingest_event(RuntimeEvent(
@@ -155,7 +155,7 @@ def main():
 
     # 4. Human Operator Approval & Plan Execution
     print(f"\n[4] Operator Review & Plan Approval...")
-    from cortexheal.recovery.executor import RecoveryExecutor
+    from agentfuse.recovery.executor import RecoveryExecutor
     executor = RecoveryExecutor()
     approved = executor.execute_plan(plan, user_role="OPERATOR", user_id="operator_alex")
     print(f"    Plan execution result: {approved} (Status: APPROVED)")

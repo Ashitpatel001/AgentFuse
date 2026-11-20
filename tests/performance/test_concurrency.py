@@ -2,9 +2,9 @@ import time
 import pytest
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
-from cortexheal.runtime.collector import RuntimeCollector
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.telemetry import metrics
+from agentfuse.runtime.collector import RuntimeCollector
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.telemetry import metrics
 
 def simulate_agent_run(run_id, num_events, collector):
     for i in range(num_events):
@@ -19,10 +19,10 @@ def simulate_agent_run(run_id, num_events, collector):
             tool="tool_X"
         ))
 
-@patch('cortexheal.runtime.collector.save_event', return_value=True)
-@patch('cortexheal.runtime.collector.save_run', return_value=True)
-@patch('cortexheal.runtime.collector.get_run', return_value=None)
-@patch('cortexheal.detection.engine.DetectionEngine.evaluate', return_value=[])
+@patch('agentfuse.runtime.collector.save_event', return_value=True)
+@patch('agentfuse.runtime.collector.save_run', return_value=True)
+@patch('agentfuse.runtime.collector.get_run', return_value=None)
+@patch('agentfuse.detection.engine.DetectionEngine.evaluate', return_value=[])
 @pytest.mark.parametrize("num_runs", [10, 50, 100])
 def test_concurrent_agent_runs(mock_eval, mock_get, mock_save_run, mock_save_event, num_runs):
     collector = RuntimeCollector(max_queue_size=20000)

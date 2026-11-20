@@ -1,29 +1,29 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from cortexheal.models.recovery import RecoveryPlan, RecoveryAction, RecoveryAnalysis
-from cortexheal.models.incident import Incident
-from cortexheal.models.run import AgentRun
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.recovery.engine import RecoveryEngine
-from cortexheal.recovery.policy import PolicyEngine
-from cortexheal.recovery.executor import RecoveryExecutor
-from cortexheal.recovery.ai_provider import MockAIProvider
+from agentfuse.models.recovery import RecoveryPlan, RecoveryAction, RecoveryAnalysis
+from agentfuse.models.incident import Incident
+from agentfuse.models.run import AgentRun
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.recovery.engine import RecoveryEngine
+from agentfuse.recovery.policy import PolicyEngine
+from agentfuse.recovery.executor import RecoveryExecutor
+from agentfuse.recovery.ai_provider import MockAIProvider
 import uuid
 
 @pytest.fixture
 def mock_postgres():
-    with patch('cortexheal.recovery.engine.get_recovery_plan_by_incident', return_value=None), \
-         patch('cortexheal.recovery.engine.get_run', return_value=AgentRun(framework="langgraph", run_id="run1", agent_id="agent1", status="paused", start_time="2026-08-08T00:00:00Z", last_updated="2026-08-08T00:00:00Z")), \
-         patch('cortexheal.recovery.engine.get_events_for_run', return_value=[RuntimeEvent.model_construct(framework="langgraph", run_id="run1", agent_id="agent1", event_type="PAUSED", sequence_number=10, timestamp="2026-08-08T00:00:00Z")]), \
-         patch('cortexheal.recovery.engine.save_recovery_plan'), \
-         patch('cortexheal.recovery.engine.save_audit_event'), \
-         patch('cortexheal.recovery.policy.get_audit_events_for_run', return_value=[]), \
-         patch('cortexheal.recovery.executor.get_run', return_value=AgentRun.model_construct(framework="langgraph", run_id="run1", agent_id="agent1", status="paused", start_time="2026-08-08T00:00:00Z", last_updated="2026-08-08T00:00:00Z")), \
-         patch('cortexheal.recovery.executor.get_events_for_run', return_value=[RuntimeEvent.model_construct(framework="langgraph", run_id="run1", agent_id="agent1", event_type="PAUSED", sequence_number=10, timestamp="2026-08-08T00:00:00Z")]), \
-         patch('cortexheal.recovery.executor.save_recovery_plan'), \
-         patch('cortexheal.recovery.executor.save_recovery_action'), \
-         patch('cortexheal.recovery.executor.save_audit_event'), \
-         patch('cortexheal.recovery.executor.ProtectionController'):
+    with patch('agentfuse.recovery.engine.get_recovery_plan_by_incident', return_value=None), \
+         patch('agentfuse.recovery.engine.get_run', return_value=AgentRun(framework="langgraph", run_id="run1", agent_id="agent1", status="paused", start_time="2026-08-08T00:00:00Z", last_updated="2026-08-08T00:00:00Z")), \
+         patch('agentfuse.recovery.engine.get_events_for_run', return_value=[RuntimeEvent.model_construct(framework="langgraph", run_id="run1", agent_id="agent1", event_type="PAUSED", sequence_number=10, timestamp="2026-08-08T00:00:00Z")]), \
+         patch('agentfuse.recovery.engine.save_recovery_plan'), \
+         patch('agentfuse.recovery.engine.save_audit_event'), \
+         patch('agentfuse.recovery.policy.get_audit_events_for_run', return_value=[]), \
+         patch('agentfuse.recovery.executor.get_run', return_value=AgentRun.model_construct(framework="langgraph", run_id="run1", agent_id="agent1", status="paused", start_time="2026-08-08T00:00:00Z", last_updated="2026-08-08T00:00:00Z")), \
+         patch('agentfuse.recovery.executor.get_events_for_run', return_value=[RuntimeEvent.model_construct(framework="langgraph", run_id="run1", agent_id="agent1", event_type="PAUSED", sequence_number=10, timestamp="2026-08-08T00:00:00Z")]), \
+         patch('agentfuse.recovery.executor.save_recovery_plan'), \
+         patch('agentfuse.recovery.executor.save_recovery_action'), \
+         patch('agentfuse.recovery.executor.save_audit_event'), \
+         patch('agentfuse.recovery.executor.ProtectionController'):
         yield
 
 def test_ai_assisted_planning(mock_postgres):
@@ -90,12 +90,12 @@ def test_ai_graceful_degradation():
     engine = RecoveryEngine(ai_provider=BrokenAIProvider())
     incident = Incident(run_id="run1", agent_id="test", failure_type="STUCK_LOOP", description="test", evidence={}, severity="HIGH", detector="stuck_loop", detector_version="1.0", trigger_event_id="test", observed_value=3, threshold=3)
     
-    with patch('cortexheal.recovery.engine.get_recovery_plan_by_incident', return_value=None), \
-         patch('cortexheal.recovery.engine.get_run', return_value=None), \
-         patch('cortexheal.recovery.engine.get_events_for_run', return_value=[]), \
-         patch('cortexheal.recovery.engine.save_audit_event'), \
-         patch('cortexheal.recovery.policy.get_audit_events_for_run', return_value=[]), \
-         patch('cortexheal.recovery.engine.save_recovery_plan'):
+    with patch('agentfuse.recovery.engine.get_recovery_plan_by_incident', return_value=None), \
+         patch('agentfuse.recovery.engine.get_run', return_value=None), \
+         patch('agentfuse.recovery.engine.get_events_for_run', return_value=[]), \
+         patch('agentfuse.recovery.engine.save_audit_event'), \
+         patch('agentfuse.recovery.policy.get_audit_events_for_run', return_value=[]), \
+         patch('agentfuse.recovery.engine.save_recovery_plan'):
         plan = engine.generate_plan(incident)
         
     assert plan.planner_type == "DETERMINISTIC"

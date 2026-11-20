@@ -9,10 +9,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.models.run import AgentRun
-from cortexheal.detection.stuck_loop import StuckLoopDetector, Config as SLConfig
-from cortexheal.storage.postgres import init_db, save_run, save_event, get_connection
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.models.run import AgentRun
+from agentfuse.detection.stuck_loop import StuckLoopDetector, Config as SLConfig
+from agentfuse.storage.postgres import init_db, save_run, save_event, get_connection
 
 
 @pytest.fixture(autouse=True)

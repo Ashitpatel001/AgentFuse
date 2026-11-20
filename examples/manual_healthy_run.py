@@ -3,9 +3,9 @@ import uuid
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 
-from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
-from cortexheal.runtime.collector import collector
+from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
+from agentfuse.runtime.collector import collector
 
 class AgentState(TypedDict):
     count: int
@@ -24,7 +24,7 @@ run_id = str(uuid.uuid4())
 print(f"Starting HEALTHY agent run: {run_id}")
 
 adapter = LangGraphAdapter(agent_id="healthy_agent")
-cortex = CortexHeal(adapter=adapter)
+cortex = AgentFuse(adapter=adapter)
 
 builder = StateGraph(AgentState)
 builder.add_node("safety_gate", cortex.safety_gate)
@@ -44,7 +44,7 @@ collector._queue.join()
 print(f"Execution complete. Run ID: {run_id}")
 
 # Verification
-from cortexheal.storage.postgres import get_events_for_run, get_audit_events_for_run
+from agentfuse.storage.postgres import get_events_for_run, get_audit_events_for_run
 events = get_events_for_run(run_id)
 audits = get_audit_events_for_run(run_id)
 

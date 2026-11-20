@@ -2,9 +2,9 @@ import os
 import pytest
 from pydantic import ValidationError
 from fastapi.testclient import TestClient
-from cortexheal.server.api import app
+from agentfuse.server.api import app
 from unittest.mock import patch
-from cortexheal.config import settings
+from agentfuse.config import settings
 
 def test_api_health_readiness():
     client = TestClient(app)
@@ -15,27 +15,27 @@ def test_api_health_readiness():
     assert res.json()["status"] == "HEALTHY"
     
     # 2. Readiness with DB down
-    with patch('cortexheal.storage.postgres.get_connection', side_effect=Exception("DB Down")):
+    with patch('agentfuse.storage.postgres.get_connection', side_effect=Exception("DB Down")):
         res = client.get("/readiness")
         assert res.status_code == 200
         assert res.json()["status"] == "NOT_READY"
         
     # 3. Readiness with telemetry worker dead
-    with patch('cortexheal.storage.postgres.get_connection'):
-        with patch('cortexheal.runtime.collector.collector') as mock_coll:
+    with patch('agentfuse.storage.postgres.get_connection'):
+        with patch('agentfuse.runtime.collector.collector') as mock_coll:
             mock_coll._worker_thread.is_alive.return_value = False
             res = client.get("/readiness")
             assert res.status_code == 200
             assert res.json()["status"] == "DEGRADED"
 
 def test_config_hardening():
-    from cortexheal.config import Settings
+    from agentfuse.config import Settings
     
     with pytest.raises(ValueError, match="authentication tokens cannot be used in production"):
-        Settings(ENVIRONMENT="production", ADMIN_TOKENS="admin-key", OPERATOR_TOKENS="operator-key", DATABASE_URL="postgresql://cortexheal:cortexpassword@localhost:5432/cortexheal_db")
+        Settings(ENVIRONMENT="production", ADMIN_TOKENS="admin-key", OPERATOR_TOKENS="operator-key", DATABASE_URL="postgresql://agentfuse:agentfusepassword@localhost:5432/agentfuse_db")
 
-@patch('cortexheal.server.api.get_incidents', return_value=[])
-@patch('cortexheal.server.api.get_run', return_value=None)
+@patch('agentfuse.server.api.get_incidents', return_value=[])
+@patch('agentfuse.server.api.get_run', return_value=None)
 def test_api_security(mock_get_run, mock_get_incidents):
     client = TestClient(app)
     
@@ -52,6 +52,6 @@ def test_api_security(mock_get_run, mock_get_incidents):
     assert res.status_code == 403
     
     # Operator can approve plans (will return 404 since it doesn't exist, but NOT 403!)
-    with patch('cortexheal.server.api.get_recovery_plan_by_incident', return_value=None):
+    with patch('agentfuse.server.api.get_recovery_plan_by_incident', return_value=None):
         res = client.post("/api/incidents/123/plan/approve", headers={"X-API-Key": settings.get_operator_tokens()[0]})
         assert res.status_code == 404

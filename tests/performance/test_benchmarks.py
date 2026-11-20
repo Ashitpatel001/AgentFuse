@@ -2,9 +2,9 @@ import time
 import pytest
 import numpy as np
 import tracemalloc
-from cortexheal.runtime.collector import RuntimeCollector
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.telemetry import metrics
+from agentfuse.runtime.collector import RuntimeCollector
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.telemetry import metrics
 from unittest.mock import patch
 
 def generate_events(num_events, run_id="perf_run"):
@@ -23,10 +23,10 @@ def simulated_db_save(*args, **kwargs):
     time.sleep(0.001)  # 1ms latency
     return True
 
-@patch('cortexheal.runtime.collector.save_event', side_effect=simulated_db_save)
-@patch('cortexheal.runtime.collector.save_run', side_effect=simulated_db_save)
-@patch('cortexheal.runtime.collector.get_run', return_value=None)
-@patch('cortexheal.detection.engine.DetectionEngine.evaluate', return_value=[])
+@patch('agentfuse.runtime.collector.save_event', side_effect=simulated_db_save)
+@patch('agentfuse.runtime.collector.save_run', side_effect=simulated_db_save)
+@patch('agentfuse.runtime.collector.get_run', return_value=None)
+@patch('agentfuse.detection.engine.DetectionEngine.evaluate', return_value=[])
 def test_queue_memory_and_overflow(mock_eval, mock_get, mock_save_run, mock_save_event):
     tracemalloc.start()
     
@@ -48,7 +48,7 @@ def test_queue_memory_and_overflow(mock_eval, mock_get, mock_save_run, mock_save
         time.sleep(5)
         return True
         
-    with patch('cortexheal.runtime.collector.save_event', side_effect=blocking_save):
+    with patch('agentfuse.runtime.collector.save_event', side_effect=blocking_save):
         overflow_collector = RuntimeCollector(max_queue_size=2)
         initial_dropped = metrics.events_dropped_total._value.get()
         
@@ -70,10 +70,10 @@ def test_queue_memory_and_overflow(mock_eval, mock_get, mock_save_run, mock_save
     
     tracemalloc.stop()
 
-@patch('cortexheal.runtime.collector.save_event', side_effect=simulated_db_save)
-@patch('cortexheal.runtime.collector.save_run', side_effect=simulated_db_save)
-@patch('cortexheal.runtime.collector.get_run', return_value=None)
-@patch('cortexheal.detection.engine.DetectionEngine.evaluate', return_value=[])
+@patch('agentfuse.runtime.collector.save_event', side_effect=simulated_db_save)
+@patch('agentfuse.runtime.collector.save_run', side_effect=simulated_db_save)
+@patch('agentfuse.runtime.collector.get_run', return_value=None)
+@patch('agentfuse.detection.engine.DetectionEngine.evaluate', return_value=[])
 @pytest.mark.parametrize("num_events", [1000, 10000])
 def test_ingestion_benchmarks(mock_eval, mock_get, mock_save_run, mock_save_event, num_events):
     collector = RuntimeCollector(max_queue_size=200000)

@@ -4,7 +4,7 @@ import pytest
 def reset_collector_state():
     """Ensure singleton collector state and queues are clean before and after each test."""
     try:
-        from cortexheal.runtime.collector import collector
+        from agentfuse.runtime.collector import collector
         collector._queue.join()
         if hasattr(collector.engine, "_emitted"):
             collector.engine._emitted.clear()
@@ -24,7 +24,7 @@ def reset_collector_state():
     yield
 
     try:
-        from cortexheal.runtime.collector import collector
+        from agentfuse.runtime.collector import collector
         collector._queue.join()
     except Exception:
         pass

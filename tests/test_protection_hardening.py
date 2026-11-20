@@ -7,13 +7,13 @@ from unittest.mock import patch, MagicMock
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from cortexheal.adapters.langgraph import cortexheal_safety_gate
-from cortexheal.adapters.langgraph import CortexHealLangGraphCallback
-from cortexheal.protection.controller import ProtectionController
-from cortexheal.storage.postgres import init_db, get_run, save_run
-from cortexheal.models.run import AgentRun
-from cortexheal.detection.stuck_loop import Config as SLConfig
-from cortexheal.runtime.collector import collector
+from agentfuse.adapters.langgraph import agentfuse_safety_gate
+from agentfuse.adapters.langgraph import AgentFuseLangGraphCallback
+from agentfuse.protection.controller import ProtectionController
+from agentfuse.storage.postgres import init_db, get_run, save_run
+from agentfuse.models.run import AgentRun
+from agentfuse.detection.stuck_loop import Config as SLConfig
+from agentfuse.runtime.collector import collector
 
 class State(TypedDict):
     count: int
@@ -29,7 +29,7 @@ def tool_b(state: State):
 
 @pytest.fixture(autouse=True)
 def mock_db():
-    with patch('cortexheal.storage.postgres.get_connection') as mock_conn:
+    with patch('agentfuse.storage.postgres.get_connection') as mock_conn:
         conn = MagicMock()
         mock_conn.return_value.__enter__.return_value = conn
         cur = MagicMock()
@@ -49,7 +49,7 @@ def setup_env():
 
 def test_timing_and_execution_order():
     builder = StateGraph(State)
-    builder.add_node("safety_gate", cortexheal_safety_gate)
+    builder.add_node("safety_gate", agentfuse_safety_gate)
     builder.add_node("tool_a", tool_a)
     builder.add_node("tool_b", tool_b)
     
@@ -73,7 +73,7 @@ def test_timing_and_execution_order():
     run_id = str(uuid.uuid4())
     save_run(AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="running", protection_mode="DISABLED"))
     
-    cb = CortexHealLangGraphCallback(agent_id="test", run_id=run_id)
+    cb = AgentFuseLangGraphCallback(agent_id="test", run_id=run_id)
     config = {"configurable": {"thread_id": run_id}, "callbacks": [cb]}
     
     # Track timings
@@ -85,7 +85,7 @@ def test_timing_and_execution_order():
     # Wait, the callback DOES execute engine.evaluate() even with a mocked DB!
     
     # Actually, we will just manually mock the run state to 'pause_requested' at count=3 to simulate the exact boundary.
-    with patch('cortexheal.adapters.langgraph.get_run') as mock_sg_get_run:
+    with patch('agentfuse.adapters.langgraph.get_run') as mock_sg_get_run:
         call_count = [0]
         def side_effect_sg(r_id):
             call_count[0] += 1
@@ -117,11 +117,11 @@ def test_timing_and_execution_order():
     print(f"Start -> Interrupt latency: {(timings['actual_interrupt_time'] - timings['start_time'])*1000:.2f}ms")
     
     # Resume
-    with patch('cortexheal.protection.controller.get_run', return_value=AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="paused", protection_mode="ACTIVE")):
+    with patch('agentfuse.protection.controller.get_run', return_value=AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="paused", protection_mode="ACTIVE")):
         controller = ProtectionController()
         controller.resume(run_id, actor_id="test_user")
         
-    with patch('cortexheal.adapters.langgraph.get_run', return_value=AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="resume_requested", protection_mode="ACTIVE")):
+    with patch('agentfuse.adapters.langgraph.get_run', return_value=AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="resume_requested", protection_mode="ACTIVE")):
         graph.invoke(None, config=config)
         
     state_after = graph.get_state(config)
@@ -135,7 +135,7 @@ def test_missing_safety_gate():
     run_id = str(uuid.uuid4())
     
     run = AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="running", protection_mode="DISABLED")
-    with patch('cortexheal.protection.controller.get_run', return_value=run):
+    with patch('agentfuse.protection.controller.get_run', return_value=run):
         # Attempt to pause
         controller.request_pause(run_id, "inc_1", "test")
         
@@ -146,7 +146,7 @@ def test_degraded_state_on_db_failure():
     controller = ProtectionController()
     run_id = str(uuid.uuid4())
     
-    with patch('cortexheal.protection.controller.get_run', side_effect=Exception("DB Connection Lost")):
+    with patch('agentfuse.protection.controller.get_run', side_effect=Exception("DB Connection Lost")):
         controller.request_pause(run_id, "inc_1", "test")
         # Should not crash (fail open) but log DEGRADED
         # The run status remains unaffected (we can't update it)

@@ -6,8 +6,8 @@ import asyncio
 
 import pytest
 
-from cortexheal.server import sse_bus
-from cortexheal.config import settings
+from agentfuse.server import sse_bus
+from agentfuse.config import settings
 
 REDIS_URL = "redis://localhost:6379/0"
 

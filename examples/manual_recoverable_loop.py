@@ -4,11 +4,11 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
-from cortexheal.runtime.collector import collector
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.storage.postgres import get_run
+from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
+from agentfuse.runtime.collector import collector
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.storage.postgres import get_run
 
 MAX_ITERATIONS = 20
 
@@ -59,9 +59,9 @@ def should_continue(state: AgentState):
         return END
     return "safety_gate"
 
-# 1. Setup CortexHeal
+# 1. Setup AgentFuse
 adapter = LangGraphAdapter(agent_id="recoverable_agent")
-cortex = CortexHeal(adapter=adapter)
+cortex = AgentFuse(adapter=adapter)
 
 # Lower threshold for fast testing
 collector.engine.detectors[0].config.repetition_threshold = 4

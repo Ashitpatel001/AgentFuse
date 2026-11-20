@@ -1,5 +1,5 @@
 """
-CortexHeal Master Demo Data Reseeder
+AgentFuse Master Demo Data Reseeder
 -----------------------------------
 Populates the PostgreSQL database with realistic, high-fidelity enterprise agent runs,
 safety incidents, recovery plans, audit event verification records, API keys, and webhooks.
@@ -9,25 +9,25 @@ import uuid
 import time
 from datetime import datetime, timezone, timedelta
 
-from cortexheal.storage.postgres import (
+from agentfuse.storage.postgres import (
     get_connection, init_db, save_run, save_incident, save_audit_event,
     save_recovery_plan, save_api_key, save_webhook_config, save_notification_record
 )
-from cortexheal.storage.auth_store import (
+from agentfuse.storage.auth_store import (
     create_organization, create_user_account, get_organization, get_user_by_email
 )
-from cortexheal.models.run import AgentRun
-from cortexheal.models.incident import Incident
-from cortexheal.models.protection import AuditEvent
-from cortexheal.models.recovery import RecoveryPlan, RecoveryAction
-from cortexheal.models.auth import (
+from agentfuse.models.run import AgentRun
+from agentfuse.models.incident import Incident
+from agentfuse.models.protection import AuditEvent
+from agentfuse.models.recovery import RecoveryPlan, RecoveryAction
+from agentfuse.models.auth import (
     ApiKey, hash_key, Organization, UserAccount, hash_password
 )
-from cortexheal.models.alerting import WebhookConfig, NotificationRecord
+from agentfuse.models.alerting import WebhookConfig, NotificationRecord
 
 def reseed():
     print("=" * 75)
-    print("  RESEEDING CORTEXHEAL ENTERPRISE DEMO DATA")
+    print("  RESEEDING AGENTFUSE ENTERPRISE DEMO DATA")
     print("=" * 75)
 
     init_db()
@@ -55,14 +55,14 @@ def reseed():
     ))
     admin_user = create_user_account(UserAccount(
         org_id="default_org",
-        email="admin@cortexheal.com",
+        email="admin@agentfuse.com",
         password_hash=hash_password("admin123"),
         role="ADMIN",
         status="ACTIVE"
     ))
     demo_user = create_user_account(UserAccount(
         org_id="default_org",
-        email="demo@cortexheal.com",
+        email="demo@agentfuse.com",
         password_hash=hash_password("demo123"),
         role="VIEWER",
         status="ACTIVE"

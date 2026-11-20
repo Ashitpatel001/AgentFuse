@@ -1,6 +1,6 @@
-# CortexHeal API & SSE Contract Specification (Locked)
+# AgentFuse API & SSE Contract Specification (Locked)
 
-This specification defines the locked backend API contract for CortexHeal Control Plane. It outlines all REST endpoints, authentication and authorization roles, request/response schemas, and Server-Sent Events (SSE).
+This specification defines the locked backend API contract for AgentFuse Control Plane. It outlines all REST endpoints, authentication and authorization roles, request/response schemas, and Server-Sent Events (SSE).
 
 ---
 
@@ -392,7 +392,7 @@ All API endpoints (except `/health`, `/readiness`, and `/metrics`) require an AP
   - `failure_type` (optional string, e.g. `STUCK_LOOP`, `BUDGET_EXCEEDED`)
 - **Response**:
   - When `format=json`: `200 OK` (`application/json`) with metadata headers and array of structured incident/audit records.
-  - When `format=csv`: `200 OK` (`text/csv`) with `Content-Disposition: attachment; filename="cortexheal_audit_export_YYYY-MM-DD.csv"`.
+  - When `format=csv`: `200 OK` (`text/csv`) with `Content-Disposition: attachment; filename="agentfuse_audit_export_YYYY-MM-DD.csv"`.
 
 ---
 

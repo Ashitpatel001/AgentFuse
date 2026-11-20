@@ -8,10 +8,10 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from cortexheal.server.api import app, RATE_LIMIT_STORE
-from cortexheal.config import settings
-from cortexheal.storage.postgres import get_connection, init_db
-from cortexheal.models.auth import hash_key
+from agentfuse.server.api import app, RATE_LIMIT_STORE
+from agentfuse.config import settings
+from agentfuse.storage.postgres import get_connection, init_db
+from agentfuse.models.auth import hash_key
 
 
 def _seed_key(org_id, role="VIEWER"):

@@ -5,10 +5,10 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
-from cortexheal.runtime.collector import collector
-from cortexheal.models.events import RuntimeEvent
+from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
+from agentfuse.runtime.collector import collector
+from agentfuse.models.events import RuntimeEvent
 
 MAX_ITERATIONS = 20
 
@@ -27,7 +27,7 @@ def dummy_tool_node(state: AgentState):
         
     print(f"Executing dummy tool (Iteration {count})")
     
-    # We must explicitly ingest a fake event so CortexHeal observes it, 
+    # We must explicitly ingest a fake event so AgentFuse observes it, 
     # since we don't have a full LLM provider automatically hooked up here.
     # In a real setup, LangChain/LangGraph callbacks would do this.
     # We will simulate the callbacks firing.
@@ -58,10 +58,10 @@ def should_continue(state: AgentState):
         return END
     return "safety_gate"
 
-# 1. Setup CortexHeal
+# 1. Setup AgentFuse
 run_id = str(uuid.uuid4())
 adapter = LangGraphAdapter(agent_id="dummy_e2e_agent")
-cortex = CortexHeal(adapter=adapter)
+cortex = AgentFuse(adapter=adapter)
 
 # Lower threshold for fast testing
 collector.engine.detectors[0].config.repetition_threshold = 4
@@ -90,4 +90,4 @@ except Exception as e:
 # Wait for telemetry to flush
 print("Waiting for telemetry queue to drain...")
 collector._queue.join()
-print("Execution complete. Check CortexHeal for Protection status.")
+print("Execution complete. Check AgentFuse for Protection status.")

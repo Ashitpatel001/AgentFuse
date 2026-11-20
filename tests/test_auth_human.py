@@ -8,10 +8,10 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from cortexheal.server.api import app
-from cortexheal.storage.postgres import get_connection, init_db
-from cortexheal.storage import auth_store
-from cortexheal.models.auth import SESSION_COOKIE_NAME, UserAccount, hash_password
+from agentfuse.server.api import app
+from agentfuse.storage.postgres import get_connection, init_db
+from agentfuse.storage import auth_store
+from agentfuse.models.auth import SESSION_COOKIE_NAME, UserAccount, hash_password
 
 _AUTH_TABLES = ["sessions", "invitations", "users", "organizations"]
 _CORE_TABLES = ["recovery_outcomes", "recovery_actions", "recovery_plans",

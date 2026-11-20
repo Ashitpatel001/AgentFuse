@@ -39,7 +39,7 @@ export function Footer() {
               <li><a href="/docs" className="hover:text-indigo-600 transition-colors">API Reference & SDK</a></li>
               <li><a href="/docs" className="hover:text-indigo-600 transition-colors">LangGraph Adapter</a></li>
               <li><a href="/docs" className="hover:text-indigo-600 transition-colors">OpenAI Gateway Drop-in</a></li>
-              <li><a href="https://github.com/Ashitpatel001/Cortexheal" target="_blank" rel="noreferrer" className="hover:text-indigo-600 transition-colors inline-flex items-center gap-1">GitHub Repository <ArrowUpRight className="w-3 h-3" /></a></li>
+              <li><a href="https://github.com/Ashitpatel001/AgentFuse" target="_blank" rel="noreferrer" className="hover:text-indigo-600 transition-colors inline-flex items-center gap-1">GitHub Repository <ArrowUpRight className="w-3 h-3" /></a></li>
             </ul>
           </div>
 

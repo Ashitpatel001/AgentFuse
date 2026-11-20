@@ -1,7 +1,7 @@
 """
 Baseline schema (yoyo).
 
-This is the single source of truth for the CortexHeal database schema. It is
+This is the single source of truth for the AgentFuse database schema. It is
 intentionally idempotent (CREATE ... IF NOT EXISTS, ADD COLUMN IF NOT EXISTS,
 CREATE INDEX IF NOT EXISTS) so that:
   * a fresh deploy builds the complete, correct schema (including org_id on the

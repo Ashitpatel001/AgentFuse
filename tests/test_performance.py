@@ -1,6 +1,6 @@
 import pytest
 import time
-from cortexheal.runtime.hashing import deterministic_hash
+from agentfuse.runtime.hashing import deterministic_hash
 
 def test_hashing_performance():
     # Test serialization cost on a moderately large object

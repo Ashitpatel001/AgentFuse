@@ -61,15 +61,14 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Ashitpatel001/Cortexheal"
-Documentation = "https://github.com/Ashitpatel001/Cortexheal#readme"
-Repository = "https://github.com/Ashitpatel001/Cortexheal.git"
-Issues = "https://github.com/Ashitpatel001/Cortexheal/issues"
-Changelog = "https://github.com/Ashitpatel001/Cortexheal/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Ashitpatel001/AgentFuse"
+Documentation = "https://github.com/Ashitpatel001/AgentFuse#readme"
+Repository = "https://github.com/Ashitpatel001/AgentFuse.git"
+Issues = "https://github.com/Ashitpatel001/AgentFuse/issues"
+Changelog = "https://github.com/Ashitpatel001/AgentFuse/blob/main/CHANGELOG.md"
 
 [project.scripts]
-agentfuse = "cortexheal.cli.main:cli"
-cortexheal = "cortexheal.cli.main:cli"
+agentfuse = "agentfuse.cli.main:cli"
 
 [project.optional-dependencies]
 langgraph = ["langgraph>=0.0.10", "langchain-core>=0.1.0"]
@@ -91,8 +90,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["agentfuse*", "cortexheal*"]
+include = ["agentfuse*"]
 
 [tool.setuptools.package-data]
 agentfuse = ["py.typed"]
-cortexheal = ["py.typed"]

@@ -1,5 +1,5 @@
 """
-Multi-worker safety (ADR / §7.2). Historically CORTEXHEAL_WORKERS=1 was required
+Multi-worker safety (ADR / §7.2). Historically AGENTFUSE_WORKERS=1 was required
 because stuck-loop state lived in memory (fragmented across workers). Detection
 is now Postgres-backed (stateless per worker) and incidents dedup on the DB
 unique constraint (run_id, failure_type, detector_version). This proves two
@@ -10,11 +10,11 @@ import uuid
 
 import pytest
 
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.models.run import AgentRun
-from cortexheal.detection.engine import DetectionEngine
-from cortexheal.detection.stuck_loop import Config as SLConfig
-from cortexheal.storage.postgres import (
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.models.run import AgentRun
+from agentfuse.detection.engine import DetectionEngine
+from agentfuse.detection.stuck_loop import Config as SLConfig
+from agentfuse.storage.postgres import (
     init_db, save_run, save_event, save_incident, get_connection,
 )
 

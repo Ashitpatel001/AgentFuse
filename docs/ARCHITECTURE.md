@@ -1,4 +1,4 @@
-# CortexHeal — Architecture Decision Record
+# AgentFuse — Architecture Decision Record
 
 Status: living document. Authored during the SaaS-hardening pass. Decisions here
 are made at senior-engineer level and are meant to be cheap to revisit with
@@ -62,7 +62,7 @@ and a fresh deploy's `save_run()` failed on the first event. Using the wrong too
   stack. Revisit Atlas if we adopt declarative schema diffing later.
 
 **Single source of truth:** `init_db()` now runs migrations (idempotent — yoyo
-tracks applied migrations in `_yoyo_migration`). Tests, `cortexheal init`, and
+tracks applied migrations in `_yoyo_migration`). Tests, `agentfuse init`, and
 production all take the identical path. The schema-drift bug class is designed out.
 
 **Migration discipline:**

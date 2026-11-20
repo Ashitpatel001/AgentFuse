@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CortexHeal Live Demo Cron Engine
+AgentFuse Live Demo Cron Engine
 ─────────────────────────────────
 Infinite-loop background worker that drives the live public marketing demo.
 Sequentially fires stuck-loop and budget-overrun scenarios so the
@@ -34,7 +34,7 @@ def run_scenario(script_path: str):
     try:
         env = os.environ.copy()
         env["DEMO_ORG_ID"] = DEMO_ORG_ID
-        env["CORTEXHEAL_ORG_ID"] = DEMO_ORG_ID
+        env["AGENTFUSE_ORG_ID"] = DEMO_ORG_ID
         result = subprocess.run(
             [sys.executable, script_path],
             capture_output=True,
@@ -53,7 +53,7 @@ def run_scenario(script_path: str):
         logger.error(f"Failed to execute {script_path}: {e}")
 
 def main():
-    logger.info(f"Initializing CortexHeal Live Demo Cron Engine (org_id={DEMO_ORG_ID})...")
+    logger.info(f"Initializing AgentFuse Live Demo Cron Engine (org_id={DEMO_ORG_ID})...")
     
     scenarios = [
         "examples/demo_stuck_loop_with_recovery.py",
@@ -67,7 +67,7 @@ def main():
         try:
             # We use a direct psycopg2 connection via our storage layer to execute pruning
             # We keep the last 50 runs and delete the rest to bound the dashboard UI
-            from cortexheal.storage.postgres import get_connection
+            from agentfuse.storage.postgres import get_connection
             with get_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
@@ -91,7 +91,7 @@ def main():
     def prune_old_demo_data_safe():
         logger.info(f"Pruning demo data for org_id={DEMO_ORG_ID} (keeping last 50 runs)")
         try:
-            from cortexheal.storage.postgres import get_connection
+            from agentfuse.storage.postgres import get_connection
             with get_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""

@@ -1,9 +1,9 @@
 import time
 import pytest
 from unittest.mock import patch
-from cortexheal.runtime.collector import RuntimeCollector
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.telemetry import metrics
+from agentfuse.runtime.collector import RuntimeCollector
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.telemetry import metrics
 
 def mock_llm_call():
     time.sleep(0.01)  # Simulated LLM call (10ms)
@@ -15,16 +15,16 @@ def baseline_workload(num_iterations):
         mock_llm_call()
     return time.time() - start_time
 
-def cortexheal_workload(num_iterations, collector):
-    with patch('cortexheal.runtime.collector.save_event', return_value=True), \
-         patch('cortexheal.runtime.collector.save_run', return_value=True), \
-         patch('cortexheal.runtime.collector.get_run', return_value=None), \
-         patch('cortexheal.detection.engine.DetectionEngine.evaluate', return_value=[]):
+def agentfuse_workload(num_iterations, collector):
+    with patch('agentfuse.runtime.collector.save_event', return_value=True), \
+         patch('agentfuse.runtime.collector.save_run', return_value=True), \
+         patch('agentfuse.runtime.collector.get_run', return_value=None), \
+         patch('agentfuse.detection.engine.DetectionEngine.evaluate', return_value=[]):
         start_time = time.time()
         for i in range(num_iterations):
             # The agent does the LLM call
             mock_llm_call()
-            # CortexHeal observes it
+            # AgentFuse observes it
             collector.ingest_event(RuntimeEvent(
                 framework="langgraph", run_id="run1", agent_id="agent1",
                 event_type="TOOL_CALL_COMPLETED", status="success",
@@ -36,25 +36,25 @@ def cortexheal_workload(num_iterations, collector):
         # the exact perceived latency overhead for the agent itself.
         return agent_time
 
-def test_baseline_vs_cortexheal():
+def test_baseline_vs_agentfuse():
     num_iterations = 100
     
     # 1. Measure Baseline
     baseline_latency = baseline_workload(num_iterations)
     
-    # 2. Measure CortexHeal
+    # 2. Measure AgentFuse
     collector = RuntimeCollector()
-    cortex_latency = cortexheal_workload(num_iterations, collector)
+    cortex_latency = agentfuse_workload(num_iterations, collector)
     collector.shutdown()
     
     # Calculate Overhead
     absolute_overhead = cortex_latency - baseline_latency
     percentage_overhead = (absolute_overhead / baseline_latency) * 100
     
-    print(f"\n--- Baseline vs CortexHeal Overhead ---")
+    print(f"\n--- Baseline vs AgentFuse Overhead ---")
     print(f"Iterations: {num_iterations} (10ms simulated LLM)")
     print(f"Baseline Latency: {baseline_latency:.4f}s")
-    print(f"CortexHeal Latency: {cortex_latency:.4f}s")
+    print(f"AgentFuse Latency: {cortex_latency:.4f}s")
     print(f"Absolute Overhead: {absolute_overhead:.4f}s")
     print(f"Percentage Overhead: {percentage_overhead:.2f}%")
     

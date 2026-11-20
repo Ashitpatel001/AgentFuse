@@ -5,11 +5,11 @@ Exercises edge cases in hashing, threshold boundaries, and concurrency.
 import sys, os, json, hashlib, uuid, time, threading, traceback
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from cortexheal.detection.stuck_loop import StuckLoopDetector, Config
-from cortexheal.detection.budget import BudgetDetector, BudgetConfig
-from cortexheal.detection.engine import DetectionEngine
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.runtime.hashing import deterministic_hash, serialize
+from agentfuse.detection.stuck_loop import StuckLoopDetector, Config
+from agentfuse.detection.budget import BudgetDetector, BudgetConfig
+from agentfuse.detection.engine import DetectionEngine
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.runtime.hashing import deterministic_hash, serialize
 
 RESULTS = []
 
@@ -240,8 +240,8 @@ def test_p1_6_concurrent_runs():
     # it counts repetitions by querying events WHERE run_id = %s, so 20 runs
     # evaluated concurrently must each trip independently with zero cross-run
     # contamination. Events are persisted first, exactly as the collector does.
-    from cortexheal.storage.postgres import init_db, save_run, save_event
-    from cortexheal.models.run import AgentRun
+    from agentfuse.storage.postgres import init_db, save_run, save_event
+    from agentfuse.models.run import AgentRun
     init_db()
 
     detector = StuckLoopDetector(Config())
@@ -413,10 +413,10 @@ def test_p2_3_threshold_boundary():
 # ============================================================
 def test_p3_1_double_approve():
     print("\n=== P3-1: Double approve ===")
-    from cortexheal.recovery.executor import RecoveryExecutor
-    from cortexheal.models.recovery import RecoveryPlan, RecoveryAction
+    from agentfuse.recovery.executor import RecoveryExecutor
+    from agentfuse.models.recovery import RecoveryPlan, RecoveryAction
     from unittest.mock import patch, MagicMock
-    from cortexheal.models.run import AgentRun
+    from agentfuse.models.run import AgentRun
     
     executor = RecoveryExecutor()
     plan = RecoveryPlan(
@@ -430,14 +430,14 @@ def test_p3_1_double_approve():
                         status="paused", start_time="2026-01-01T00:00:00Z",
                         last_updated="2026-01-01T00:00:00Z")
     
-    with patch('cortexheal.recovery.executor.get_run', return_value=mock_run), \
-         patch('cortexheal.recovery.executor.get_events_for_run', return_value=[]), \
-         patch('cortexheal.recovery.executor.save_recovery_plan'), \
-         patch('cortexheal.recovery.executor.save_recovery_action'), \
-         patch('cortexheal.recovery.executor.save_audit_event'), \
-         patch('cortexheal.recovery.executor.save_recovery_outcome'), \
-         patch('cortexheal.recovery.executor.get_incident', return_value=MagicMock()), \
-         patch('cortexheal.recovery.executor.ProtectionController') as mock_pc:
+    with patch('agentfuse.recovery.executor.get_run', return_value=mock_run), \
+         patch('agentfuse.recovery.executor.get_events_for_run', return_value=[]), \
+         patch('agentfuse.recovery.executor.save_recovery_plan'), \
+         patch('agentfuse.recovery.executor.save_recovery_action'), \
+         patch('agentfuse.recovery.executor.save_audit_event'), \
+         patch('agentfuse.recovery.executor.save_recovery_outcome'), \
+         patch('agentfuse.recovery.executor.get_incident', return_value=MagicMock()), \
+         patch('agentfuse.recovery.executor.ProtectionController') as mock_pc:
         
         # First approve
         result1 = executor.execute_plan(plan, "OPERATOR", "user1")
@@ -454,8 +454,8 @@ def test_p3_1_double_approve():
 
 def test_p3_3_resume_not_paused():
     print("\n=== P3-3: Resume a run that was never paused ===")
-    from cortexheal.protection.controller import ProtectionController
-    from cortexheal.models.run import AgentRun
+    from agentfuse.protection.controller import ProtectionController
+    from agentfuse.models.run import AgentRun
     from unittest.mock import patch, MagicMock
     
     pc = ProtectionController()
@@ -463,9 +463,9 @@ def test_p3_3_resume_not_paused():
                         status="running", start_time="2026-01-01T00:00:00Z",
                         last_updated="2026-01-01T00:00:00Z")
     
-    with patch('cortexheal.protection.controller.get_run', return_value=mock_run) as mock_get, \
-         patch('cortexheal.protection.controller.save_audit_event') as mock_audit, \
-         patch('cortexheal.protection.controller.update_run_status') as mock_update:
+    with patch('agentfuse.protection.controller.get_run', return_value=mock_run) as mock_get, \
+         patch('agentfuse.protection.controller.save_audit_event') as mock_audit, \
+         patch('agentfuse.protection.controller.update_run_status') as mock_update:
         
         pc.resume("run_never_paused", actor_id="user1")
         
@@ -486,14 +486,14 @@ def test_p3_3_resume_not_paused():
 
 def test_p3_6_resume_nonexistent():
     print("\n=== P3-6: Resume non-existent run ===")
-    from cortexheal.protection.controller import ProtectionController
+    from agentfuse.protection.controller import ProtectionController
     from unittest.mock import patch
     
     pc = ProtectionController()
     
-    with patch('cortexheal.protection.controller.get_run', return_value=None) as mock_get, \
-         patch('cortexheal.protection.controller.save_audit_event') as mock_audit, \
-         patch('cortexheal.protection.controller.update_run_status') as mock_update:
+    with patch('agentfuse.protection.controller.get_run', return_value=None) as mock_get, \
+         patch('agentfuse.protection.controller.save_audit_event') as mock_audit, \
+         patch('agentfuse.protection.controller.update_run_status') as mock_update:
         
         # Should silently return without updating or auditing
         pc.resume("DOES_NOT_EXIST_12345", actor_id="user1")
@@ -510,8 +510,8 @@ def test_p3_6_resume_nonexistent():
 
 def test_p3_7_concurrent_resume():
     print("\n=== P3-7: 100 concurrent resume requests ===")
-    from cortexheal.protection.controller import ProtectionController
-    from cortexheal.models.run import AgentRun
+    from agentfuse.protection.controller import ProtectionController
+    from agentfuse.models.run import AgentRun
     from unittest.mock import patch, MagicMock
     
     update_count = [0]
@@ -536,9 +536,9 @@ def test_p3_7_concurrent_resume():
             with lock:
                 errors.append(traceback.format_exc())
     
-    with patch('cortexheal.protection.controller.get_run', return_value=mock_run), \
-         patch('cortexheal.protection.controller.update_run_status', side_effect=mock_update_status), \
-         patch('cortexheal.protection.controller.save_audit_event'):
+    with patch('agentfuse.protection.controller.get_run', return_value=mock_run), \
+         patch('agentfuse.protection.controller.update_run_status', side_effect=mock_update_status), \
+         patch('agentfuse.protection.controller.save_audit_event'):
         threads = [threading.Thread(target=do_resume, args=(i,)) for i in range(100)]
         for t in threads:
             t.start()

@@ -1,8 +1,8 @@
 # AgentFuse
 
 <p align="center">
-  <a href="https://github.com/Ashitpatel001/Cortexheal">
-    <img src="https://img.shields.io/github/stars/Ashitpatel001/Cortexheal?style=for-the-badge&logo=github&color=F59E0B&label=Stars" alt="GitHub Stars" />
+  <a href="https://github.com/Ashitpatel001/AgentFuse">
+    <img src="https://img.shields.io/github/stars/Ashitpatel001/AgentFuse?style=for-the-badge&logo=github&color=F59E0B&label=Stars" alt="GitHub Stars" />
   </a>
   <a href="https://pypi.org/project/agentfuse/">
     <img src="https://img.shields.io/pypi/v/agentfuse?style=for-the-badge&color=blue&logo=pypi&logoColor=white" alt="PyPI Version" />
@@ -156,7 +156,7 @@ agentfuse mcp
       "command": "agentfuse",
       "args": ["mcp"],
       "env": {
-        "DATABASE_URL": "postgresql://cortexheal:cortexpassword@localhost:5433/cortexheal_db"
+        "DATABASE_URL": "postgresql://agentfuse:agentfusepassword@localhost:5433/agentfuse_db"
       }
     }
   }
@@ -171,7 +171,7 @@ Provides live MCP tools: `list_open_incidents`, `get_incident_details`, and `get
 
 ### 1. Clone & Run with Docker Compose
 ```bash
-git clone https://github.com/Ashitpatel001/Cortexheal.git agentfuse
+git clone https://github.com/Ashitpatel001/AgentFuse.git agentfuse
 cd agentfuse
 
 # Start PostgreSQL 15 & Redis containers
@@ -185,7 +185,7 @@ python scripts/reseed_demo_data.py
 ```bash
 agentfuse start
 # Or via uvicorn directly:
-python -m uvicorn cortexheal.server.api:app --host 0.0.0.0 --port 8000
+python -m uvicorn agentfuse.server.api:app --host 0.0.0.0 --port 8000
 ```
 
 ### 3. Run Live Interactive Demo
@@ -194,7 +194,7 @@ python examples/demo_proxy_gateway.py
 ```
 
 ### 4. Access Web Interfaces
-- **APM Telemetry & Safety Console**: `http://localhost:5173` (Demo login: `admin@cortexheal.com` / `admin123`)
+- **APM Telemetry & Safety Console**: `http://localhost:5173` (Demo login: `admin@agentfuse.com` / `admin123`)
 - **Marketing & Safety Overview**: `http://localhost:3000`
 
 ---

@@ -1,6 +1,6 @@
 # Normalized Runtime Event Specification
 
-The canonical runtime event model bridges the gap between various AI frameworks (e.g., LangGraph) and the CortexHeal Runtime Engine.
+The canonical runtime event model bridges the gap between various AI frameworks (e.g., LangGraph) and the AgentFuse Runtime Engine.
 
 ## Schema
 

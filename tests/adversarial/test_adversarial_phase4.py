@@ -6,9 +6,9 @@ import sys, os, json, uuid, time, threading, traceback, asyncio, pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from unittest.mock import patch, MagicMock
-from cortexheal.models.run import AgentRun
-from cortexheal.models.incident import Incident
-from cortexheal.models.recovery import RecoveryPlan, RecoveryAction
+from agentfuse.models.run import AgentRun
+from agentfuse.models.incident import Incident
+from agentfuse.models.recovery import RecoveryPlan, RecoveryAction
 
 MOCK_RUNS = {
     "run_1": AgentRun(framework="langgraph", run_id="run_1", agent_id="agent1",
@@ -40,30 +40,30 @@ def mock_save_plan(plan): MOCK_PLANS[plan.incident_id] = plan
 def mock_noop(*args, **kwargs): return True
 
 patches = [
-    patch('cortexheal.server.api.get_run', side_effect=mock_get_run),
-    patch('cortexheal.server.api.get_all_runs', side_effect=mock_get_all_runs),
-    patch('cortexheal.server.api.get_incidents', side_effect=mock_get_incidents),
-    patch('cortexheal.server.api.get_incident', side_effect=mock_get_incident),
-    patch('cortexheal.server.api.get_events_for_run', side_effect=mock_get_events),
-    patch('cortexheal.server.api.get_audit_events_for_run', side_effect=mock_get_audits),
-    patch('cortexheal.server.api.get_recovery_plan_by_incident', side_effect=mock_get_plan),
-    patch('cortexheal.protection.controller.get_run', side_effect=mock_get_run),
-    patch('cortexheal.protection.controller.update_run_status', side_effect=mock_noop),
-    patch('cortexheal.protection.controller.save_audit_event', side_effect=mock_noop),
-    patch('cortexheal.recovery.executor.get_run', side_effect=mock_get_run),
-    patch('cortexheal.recovery.executor.get_events_for_run', side_effect=mock_get_events),
-    patch('cortexheal.recovery.executor.get_incident', side_effect=lambda i: mock_get_incident(i)),
-    patch('cortexheal.recovery.executor.save_recovery_plan', side_effect=mock_save_plan),
-    patch('cortexheal.recovery.executor.save_recovery_action', side_effect=mock_noop),
-    patch('cortexheal.recovery.executor.save_audit_event', side_effect=mock_noop),
-    patch('cortexheal.recovery.executor.save_recovery_outcome', side_effect=mock_noop),
-    patch('cortexheal.recovery.engine.get_recovery_plan_by_incident', side_effect=mock_get_plan),
-    patch('cortexheal.recovery.engine.save_recovery_plan', side_effect=mock_save_plan),
-    patch('cortexheal.recovery.engine.get_run', side_effect=mock_get_run),
-    patch('cortexheal.recovery.engine.get_events_for_run', side_effect=mock_get_events),
-    patch('cortexheal.recovery.engine.save_audit_event', side_effect=mock_noop),
-    patch('cortexheal.recovery.policy.get_audit_events_for_run', side_effect=mock_get_audits),
-    patch('cortexheal.storage.postgres.get_connection', side_effect=Exception("No DB")),
+    patch('agentfuse.server.api.get_run', side_effect=mock_get_run),
+    patch('agentfuse.server.api.get_all_runs', side_effect=mock_get_all_runs),
+    patch('agentfuse.server.api.get_incidents', side_effect=mock_get_incidents),
+    patch('agentfuse.server.api.get_incident', side_effect=mock_get_incident),
+    patch('agentfuse.server.api.get_events_for_run', side_effect=mock_get_events),
+    patch('agentfuse.server.api.get_audit_events_for_run', side_effect=mock_get_audits),
+    patch('agentfuse.server.api.get_recovery_plan_by_incident', side_effect=mock_get_plan),
+    patch('agentfuse.protection.controller.get_run', side_effect=mock_get_run),
+    patch('agentfuse.protection.controller.update_run_status', side_effect=mock_noop),
+    patch('agentfuse.protection.controller.save_audit_event', side_effect=mock_noop),
+    patch('agentfuse.recovery.executor.get_run', side_effect=mock_get_run),
+    patch('agentfuse.recovery.executor.get_events_for_run', side_effect=mock_get_events),
+    patch('agentfuse.recovery.executor.get_incident', side_effect=lambda i: mock_get_incident(i)),
+    patch('agentfuse.recovery.executor.save_recovery_plan', side_effect=mock_save_plan),
+    patch('agentfuse.recovery.executor.save_recovery_action', side_effect=mock_noop),
+    patch('agentfuse.recovery.executor.save_audit_event', side_effect=mock_noop),
+    patch('agentfuse.recovery.executor.save_recovery_outcome', side_effect=mock_noop),
+    patch('agentfuse.recovery.engine.get_recovery_plan_by_incident', side_effect=mock_get_plan),
+    patch('agentfuse.recovery.engine.save_recovery_plan', side_effect=mock_save_plan),
+    patch('agentfuse.recovery.engine.get_run', side_effect=mock_get_run),
+    patch('agentfuse.recovery.engine.get_events_for_run', side_effect=mock_get_events),
+    patch('agentfuse.recovery.engine.save_audit_event', side_effect=mock_noop),
+    patch('agentfuse.recovery.policy.get_audit_events_for_run', side_effect=mock_get_audits),
+    patch('agentfuse.storage.postgres.get_connection', side_effect=Exception("No DB")),
 ]
 
 @pytest.fixture(scope="module", autouse=True)
@@ -75,8 +75,8 @@ def manage_patches():
         p.stop()
 
 from fastapi.testclient import TestClient
-from cortexheal.server.api import app, RATE_LIMIT_STORE
-from cortexheal.config import settings
+from agentfuse.server.api import app, RATE_LIMIT_STORE
+from agentfuse.config import settings
 
 # Bump rate limit so tests don't interfere with each other
 settings.API_RATE_LIMIT_PER_MIN = 5000
@@ -113,7 +113,7 @@ def test_p4_1_viewer_on_mutating():
     record("P4-1a", "Resume with VIEWER token returns 403", r.status_code == 403, raw)
     
     # Create a plan
-    from cortexheal.recovery.engine import RecoveryEngine
+    from agentfuse.recovery.engine import RecoveryEngine
     plan = RecoveryEngine().generate_plan(MOCK_INCIDENTS[0])
     MOCK_PLANS[inc_id] = plan
     
@@ -277,8 +277,8 @@ def test_p4_6_rate_limit():
 def test_p5():
     print("\n=== P5: SSE analysis ===")
     import inspect
-    import cortexheal.server.api as api_mod
-    from cortexheal.server import sse_bus
+    import agentfuse.server.api as api_mod
+    from agentfuse.server import sse_bus
 
     # SSE is now typed AND org-scoped, fanned out via a Redis-capable bus.
     bus_src = inspect.getsource(sse_bus)
@@ -302,13 +302,13 @@ def test_p5():
 
 def test_p6_1_fail_open():
     print("\n=== P6-1: Fail-open on DB failure ===")
-    from cortexheal.runtime.collector import RuntimeCollector
-    from cortexheal.models.events import RuntimeEvent
+    from agentfuse.runtime.collector import RuntimeCollector
+    from agentfuse.models.events import RuntimeEvent
     
-    with patch('cortexheal.runtime.collector.get_run', side_effect=Exception("DB DEAD")), \
-         patch('cortexheal.runtime.collector.save_run', side_effect=Exception("DB DEAD")), \
-         patch('cortexheal.runtime.collector.save_event', side_effect=Exception("DB DEAD")), \
-         patch('cortexheal.runtime.collector.save_incident', side_effect=Exception("DB DEAD")):
+    with patch('agentfuse.runtime.collector.get_run', side_effect=Exception("DB DEAD")), \
+         patch('agentfuse.runtime.collector.save_run', side_effect=Exception("DB DEAD")), \
+         patch('agentfuse.runtime.collector.save_event', side_effect=Exception("DB DEAD")), \
+         patch('agentfuse.runtime.collector.save_incident', side_effect=Exception("DB DEAD")):
         
         c = RuntimeCollector(max_queue_size=100)
         ev = RuntimeEvent(
@@ -330,14 +330,14 @@ def test_p6_1_fail_open():
 
 def test_p6_3_queue_overflow():
     print("\n=== P6-3: Queue overflow ===")
-    from cortexheal.runtime.collector import RuntimeCollector
-    from cortexheal.models.events import RuntimeEvent
+    from agentfuse.runtime.collector import RuntimeCollector
+    from agentfuse.models.events import RuntimeEvent
     import queue as q
     
-    with patch('cortexheal.runtime.collector.get_run', return_value=None), \
-         patch('cortexheal.runtime.collector.save_run', side_effect=mock_noop), \
-         patch('cortexheal.runtime.collector.save_event', side_effect=mock_noop), \
-         patch('cortexheal.runtime.collector.save_incident', side_effect=mock_noop):
+    with patch('agentfuse.runtime.collector.get_run', return_value=None), \
+         patch('agentfuse.runtime.collector.save_run', side_effect=mock_noop), \
+         patch('agentfuse.runtime.collector.save_event', side_effect=mock_noop), \
+         patch('agentfuse.runtime.collector.save_incident', side_effect=mock_noop):
         
         # Pause the worker so queue fills up
         c = RuntimeCollector(max_queue_size=5)
@@ -374,7 +374,7 @@ def test_p6_double_approve():
     rl_clear()
     inc_id = MOCK_INCIDENTS[0].incident_id
     
-    from cortexheal.recovery.engine import RecoveryEngine
+    from agentfuse.recovery.engine import RecoveryEngine
     plan = RecoveryEngine().generate_plan(MOCK_INCIDENTS[0])
     plan.status = "PROPOSED"
     MOCK_PLANS[inc_id] = plan
@@ -393,7 +393,7 @@ def test_p6_approve_then_reject():
     rl_clear()
     inc_id = MOCK_INCIDENTS[0].incident_id
     
-    from cortexheal.recovery.engine import RecoveryEngine
+    from agentfuse.recovery.engine import RecoveryEngine
     plan = RecoveryEngine().generate_plan(MOCK_INCIDENTS[0])
     plan.status = "PROPOSED"
     MOCK_PLANS[inc_id] = plan
