@@ -1,6 +1,6 @@
 # Live Public Demo Setup Guide
 
-This guide explains how to set up the **CortexHeal Live Demo** on your public-facing marketing site.
+This guide explains how to set up the **AgentFuse Live Demo** on your public-facing marketing site.
 
 ## Security Model
 

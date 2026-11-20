@@ -1,14 +1,14 @@
 # AI Assistant Integration (MCP + Context Fallback)
 
-CortexHeal is designed with a strict **Zero-LLM safety boundary**. The detection and pause/resume decisions are 100% deterministic.
+AgentFuse is designed with a strict **Zero-LLM safety boundary**. The detection and pause/resume decisions are 100% deterministic.
 
-However, when an agent is paused by a circuit breaker (e.g., stuck in a loop or exceeding a budget), human engineers often use AI assistants like Cursor, Claude Code, or Windsurf to diagnose and fix the underlying agent logic. To reduce friction during this debugging phase, CortexHeal provides two human-facing convenience layers to export incident data directly into your AI assistant.
+However, when an agent is paused by a circuit breaker (e.g., stuck in a loop or exceeding a budget), human engineers often use AI assistants like Cursor, Claude Code, or Windsurf to diagnose and fix the underlying agent logic. To reduce friction during this debugging phase, AgentFuse provides two human-facing convenience layers to export incident data directly into your AI assistant.
 
-**Crucially, this data only flows outward to human tools. It never feeds back into CortexHeal's own detection engine.**
+**Crucially, this data only flows outward to human tools. It never feeds back into AgentFuse's own detection engine.**
 
 ## 1. Model Context Protocol (MCP) Server
 
-CortexHeal ships with an embedded, read-only MCP server. This allows MCP-compatible AI assistants (like Claude Desktop) to query live incident data directly from the CortexHeal control plane without you needing to copy-paste.
+AgentFuse ships with an embedded, read-only MCP server. This allows MCP-compatible AI assistants (like Claude Desktop) to query live incident data directly from the AgentFuse control plane without you needing to copy-paste.
 
 ### Exposed Tools
 - `list_open_incidents`: Returns a list of all currently open incidents, including their IDs, severity, and agent targets.
@@ -20,20 +20,20 @@ CortexHeal ships with an embedded, read-only MCP server. This allows MCP-compati
 You can start the MCP server using the CLI:
 
 ```bash
-cortexheal mcp
+agentfuse mcp
 ```
 
 This launches the server over `stdio`, which is the standard protocol for local MCP communication. 
 
 ### Claude Desktop Configuration Example
 
-To connect Claude Desktop to your local CortexHeal instance, add the following to your `claude_desktop_config.json`:
+To connect Claude Desktop to your local AgentFuse instance, add the following to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "cortexheal": {
-      "command": "cortexheal",
+    "agentfuse": {
+      "command": "agentfuse",
       "args": ["mcp"]
     }
   }
@@ -45,13 +45,13 @@ Once connected, you can ask Claude questions like:
 
 ## 2. Copy as AI Context (Dashboard Fallback)
 
-For developers using AI assistants that do not yet support MCP, CortexHeal provides a one-click fallback in the dashboard UI.
+For developers using AI assistants that do not yet support MCP, AgentFuse provides a one-click fallback in the dashboard UI.
 
 On any **Incident Detail** screen, click the **"COPY AS AI CONTEXT"** button. This instantly formats the incident details, evidence, and deterministic thresholds into a clean, markdown-friendly text block on your clipboard.
 
 **Example Output:**
 ```text
-CortexHeal Incident Context
+AgentFuse Incident Context
 ID: inc-8a7b6c5d
 Run ID: run-1234-abcd
 Agent ID: support_ticket_router

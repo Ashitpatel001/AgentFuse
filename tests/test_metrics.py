@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 
-from cortexheal.storage.postgres import init_db, get_connection, get_metrics_summary
+from agentfuse.storage.postgres import init_db, get_connection, get_metrics_summary
 
 
 @pytest.fixture(autouse=True)

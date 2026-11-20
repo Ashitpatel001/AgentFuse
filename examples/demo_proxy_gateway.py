@@ -1,14 +1,14 @@
 """
-CortexHeal Proxy Gateway Demo (Zero-Code Agent Circuit Breaker)
+AgentFuse Proxy Gateway Demo (Zero-Code Agent Circuit Breaker)
 ==============================================================
 Demonstrates how any Python agent or LLM application can route through
-CortexHeal's proxy gateway (POST /v1/chat/completions) with zero code changes.
+AgentFuse's proxy gateway (POST /v1/chat/completions) with zero code changes.
 
 Key Architectural Guarantees:
 1. Zero Upstream Cost on Trips: Trips on the 4th repetitive state hash before
    reaching OpenAI/Anthropic, preventing runaway tool loops.
 2. BYOK (Bring Your Own Key): Pass your own API key in Authorization header.
-   CortexHeal never pays or marks up your LLM token bills.
+   AgentFuse never pays or marks up your LLM token bills.
 3. Deterministic: Uses mathematical SHA-256 state equality, not probabilistic LLMs.
 """
 
@@ -42,7 +42,7 @@ def make_call(agent_id: str, run_id: str, prompt: str, call_number: int):
     try:
         with urllib.request.urlopen(req, timeout=10) as response:
             res_data = json.loads(response.read().decode("utf-8"))
-            meta = res_data.get("cortexheal", {})
+            meta = res_data.get("agentfuse", {})
             print(f"  [Call #{call_number}] HTTP {response.status} OK | Decision Latency: {meta.get('decision_latency_ms', 0)}ms | State Hash: {meta.get('state_hash', 'N/A')[:10]}...")
             return True, res_data
     except urllib.error.HTTPError as e:
@@ -55,7 +55,7 @@ def make_call(agent_id: str, run_id: str, prompt: str, call_number: int):
 
 def main():
     print("=" * 70)
-    print("  CORTEXHEAL PROXY GATEWAY: ZERO-CODE CIRCUIT BREAKER DEMO")
+    print("  AGENTFUSE PROXY GATEWAY: ZERO-CODE CIRCUIT BREAKER DEMO")
     print("=" * 70)
     print(f"Targeting: {GATEWAY_URL}\n")
 

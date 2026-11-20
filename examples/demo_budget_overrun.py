@@ -1,8 +1,8 @@
 """
-CortexHeal Demo: Deterministic Budget Overrun Protection & Recovery
+AgentFuse Demo: Deterministic Budget Overrun Protection & Recovery
 -------------------------------------------------------------------
 Demonstrates an agent burning token budget on repetitive LLM / web search calls.
-CortexHeal deterministically detects the cumulative budget breach ($1.00 threshold),
+AgentFuse deterministically detects the cumulative budget breach ($1.00 threshold),
 pauses the run, generates a recovery diagnosis, and resumes upon operator authorization.
 """
 
@@ -12,12 +12,12 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
-from cortexheal.runtime.collector import collector
-from cortexheal.models.events import RuntimeEvent, TokenUsage
-from cortexheal.storage.postgres import get_run, get_incidents, update_run_status
-from cortexheal.protection.controller import ProtectionController
+from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
+from agentfuse.runtime.collector import collector
+from agentfuse.models.events import RuntimeEvent, TokenUsage
+from agentfuse.storage.postgres import get_run, get_incidents, update_run_status
+from agentfuse.protection.controller import ProtectionController
 
 class BudgetAgentState(TypedDict):
     query: str
@@ -35,7 +35,7 @@ def main():
     budget_threshold = 1.00  # $1.00 limit
 
     adapter = LangGraphAdapter(agent_id=agent_id)
-    cortex = CortexHeal(adapter=adapter)
+    cortex = AgentFuse(adapter=adapter)
 
     # Initial run event
     collector.ingest_event(RuntimeEvent(
@@ -120,7 +120,7 @@ def main():
         for output in graph.stream(initial_state, config=config):
             pass
     except Exception as e:
-        print(f"[Safety Gate Triggered] Execution paused by CortexHeal: {e}")
+        print(f"[Safety Gate Triggered] Execution paused by AgentFuse: {e}")
 
     collector._queue.join()
     time.sleep(0.5)

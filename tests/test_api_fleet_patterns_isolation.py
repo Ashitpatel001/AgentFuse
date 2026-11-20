@@ -3,9 +3,9 @@ from fastapi.testclient import TestClient
 import uuid
 from datetime import datetime, timezone
 
-from cortexheal.server.api import app
-from cortexheal.storage.postgres import get_connection, init_db
-from cortexheal.models.auth import hash_key
+from agentfuse.server.api import app
+from agentfuse.storage.postgres import get_connection, init_db
+from agentfuse.models.auth import hash_key
 
 client = TestClient(app)
 

@@ -66,7 +66,7 @@ export function Navbar({ onOpenSignUp }: NavbarProps = {}) {
 
         <div className="flex items-center gap-3">
           <a
-            href="https://github.com/Ashitpatel001/Cortexheal"
+            href="https://github.com/Ashitpatel001/AgentFuse"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition-all"

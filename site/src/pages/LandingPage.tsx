@@ -65,7 +65,7 @@ const mcpSnippet = `// In claude_desktop_config.json or .cursor/mcp.json
       "command": "agentfuse",
       "args": ["mcp"],
       "env": {
-        "DATABASE_URL": "postgresql://cortexheal:cortexpassword@localhost:5433/cortexheal_db"
+        "DATABASE_URL": "postgresql://agentfuse:agentfusepassword@localhost:5433/agentfuse_db"
       }
     }
   }

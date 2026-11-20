@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from cortexheal.server.api import app
+from agentfuse.server.api import app
 
 client = TestClient(app)
 
@@ -19,8 +19,8 @@ def test_gateway_chat_completion_normal():
     assert resp.status_code == 200
     data = resp.json()
     assert "choices" in data
-    assert "cortexheal" in data
-    assert data["cortexheal"]["status"] == "PASSED_CIRCUIT_BREAKER"
+    assert "agentfuse" in data
+    assert data["agentfuse"]["status"] == "PASSED_CIRCUIT_BREAKER"
 
 
 def test_gateway_stuck_loop_circuit_breaker():

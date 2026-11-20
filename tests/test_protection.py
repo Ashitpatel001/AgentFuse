@@ -3,13 +3,13 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from cortexheal.adapters.langgraph import cortexheal_safety_gate
-from cortexheal.adapters.langgraph import CortexHealLangGraphCallback
-from cortexheal.protection.controller import ProtectionController
-from cortexheal.storage.postgres import init_db, get_run, save_run
-from cortexheal.models.run import AgentRun
-from cortexheal.detection.stuck_loop import Config as SLConfig
-from cortexheal.runtime.collector import collector
+from agentfuse.adapters.langgraph import agentfuse_safety_gate
+from agentfuse.adapters.langgraph import AgentFuseLangGraphCallback
+from agentfuse.protection.controller import ProtectionController
+from agentfuse.storage.postgres import init_db, get_run, save_run
+from agentfuse.models.run import AgentRun
+from agentfuse.detection.stuck_loop import Config as SLConfig
+from agentfuse.runtime.collector import collector
 import uuid
 
 class State(TypedDict):
@@ -22,7 +22,7 @@ from unittest.mock import patch, MagicMock
 
 @pytest.fixture(autouse=True)
 def mock_db():
-    with patch('cortexheal.storage.postgres.get_connection') as mock_conn:
+    with patch('agentfuse.storage.postgres.get_connection') as mock_conn:
         conn = MagicMock()
         mock_conn.return_value.__enter__.return_value = conn
         cur = MagicMock()
@@ -45,7 +45,7 @@ def setup_env():
 def test_actual_graph_pause_and_resume():
     # 1. Build the graph with safety gate
     builder = StateGraph(State)
-    builder.add_node("safety_gate", cortexheal_safety_gate)
+    builder.add_node("safety_gate", agentfuse_safety_gate)
     builder.add_node("mock_tool", mock_tool)
     
     # Simple loop A -> B -> A until interrupted or done
@@ -68,12 +68,12 @@ def test_actual_graph_pause_and_resume():
     # Pre-save run since SDK relies on it
     save_run(AgentRun(framework="langgraph", run_id=run_id, agent_id="test_agent", status="running"))
     
-    cb = CortexHealLangGraphCallback(agent_id="test_agent", run_id=run_id)
+    cb = AgentFuseLangGraphCallback(agent_id="test_agent", run_id=run_id)
     config = {"configurable": {"thread_id": run_id}, "callbacks": [cb]}
     
     # 2. Invoke the graph
     # We use a mocked run to let the safety gate pass initially, then pause later
-    with patch('cortexheal.adapters.langgraph.get_run') as mock_sg_get_run:
+    with patch('agentfuse.adapters.langgraph.get_run') as mock_sg_get_run:
         # First call to safety gate returns running, second call returns pause_requested
         mock_sg_get_run.side_effect = [
             AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="running"),
@@ -82,7 +82,7 @@ def test_actual_graph_pause_and_resume():
             AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="pause_requested")
         ]
         
-        with patch('cortexheal.protection.controller.get_run', return_value=AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="running")):
+        with patch('agentfuse.protection.controller.get_run', return_value=AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="running")):
             graph.invoke({"count": 0}, config=config)
     
     # 3. Verify it paused
@@ -92,8 +92,8 @@ def test_actual_graph_pause_and_resume():
     assert state.values["count"] >= 3
     
     db_run = AgentRun(framework="langgraph", run_id=run_id, agent_id="test", status="paused")
-    with patch('cortexheal.protection.controller.get_run', return_value=db_run), \
-         patch('cortexheal.adapters.langgraph.get_run', return_value=db_run):
+    with patch('agentfuse.protection.controller.get_run', return_value=db_run), \
+         patch('agentfuse.adapters.langgraph.get_run', return_value=db_run):
         
         # 4. Resume
         controller = ProtectionController()

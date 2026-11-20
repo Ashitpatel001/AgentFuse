@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from cortexheal.runtime.collector import collector
-from cortexheal.models.events import RuntimeEvent, TokenUsage
-from cortexheal.models.run import AgentRun
+from agentfuse.runtime.collector import collector
+from agentfuse.models.events import RuntimeEvent, TokenUsage
+from agentfuse.models.run import AgentRun
 
-@patch('cortexheal.runtime.collector.get_run')
-@patch('cortexheal.runtime.collector.save_run')
-@patch('cortexheal.runtime.collector.save_event')
+@patch('agentfuse.runtime.collector.get_run')
+@patch('agentfuse.runtime.collector.save_run')
+@patch('agentfuse.runtime.collector.save_event')
 def test_collector_ingest_event(mock_save_event, mock_save_run, mock_get_run):
     # Mock run not existing yet
     mock_get_run.return_value = None
@@ -35,13 +35,13 @@ def test_collector_ingest_event(mock_save_event, mock_save_run, mock_get_run):
     assert mock_save_event.call_count == 1
     assert mock_save_event.call_args[0][0] == event
 
-@patch('cortexheal.runtime.collector.get_recovery_plan_by_incident')
-@patch('cortexheal.runtime.collector.save_recovery_plan')
-@patch('cortexheal.runtime.collector.save_audit_event')
-@patch('cortexheal.runtime.collector.get_audit_events_for_run', return_value=[])
-@patch('cortexheal.runtime.collector.get_run')
-@patch('cortexheal.runtime.collector.save_run')
-@patch('cortexheal.runtime.collector.save_event')
+@patch('agentfuse.runtime.collector.get_recovery_plan_by_incident')
+@patch('agentfuse.runtime.collector.save_recovery_plan')
+@patch('agentfuse.runtime.collector.save_audit_event')
+@patch('agentfuse.runtime.collector.get_audit_events_for_run', return_value=[])
+@patch('agentfuse.runtime.collector.get_run')
+@patch('agentfuse.runtime.collector.save_run')
+@patch('agentfuse.runtime.collector.save_event')
 def test_collector_run_completed(mock_save_event, mock_save_run, mock_get_run,
                                   mock_get_audits, mock_save_audit,
                                   mock_save_recovery, mock_get_recovery):

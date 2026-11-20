@@ -1,25 +1,25 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
-from cortexheal.server.api import app
-from cortexheal.config import settings
-from cortexheal.models.run import AgentRun
-from cortexheal.models.incident import Incident
-from cortexheal.models.protection import AuditEvent
-from cortexheal.models.events import RuntimeEvent
+from agentfuse.server.api import app
+from agentfuse.config import settings
+from agentfuse.models.run import AgentRun
+from agentfuse.models.incident import Incident
+from agentfuse.models.protection import AuditEvent
+from agentfuse.models.events import RuntimeEvent
 import uuid
 
 client = TestClient(app)
 
 @pytest.fixture
 def mock_db():
-    with patch('cortexheal.server.api.get_all_runs') as m_runs, \
-         patch('cortexheal.server.api.get_run') as m_run, \
-         patch('cortexheal.server.api.get_incidents') as m_incidents, \
-         patch('cortexheal.server.api.get_incident') as m_incident, \
-         patch('cortexheal.server.api.get_events_for_run') as m_events, \
-         patch('cortexheal.server.api.get_audit_events_for_run') as m_audits, \
-         patch('cortexheal.server.api.protection_controller') as m_controller:
+    with patch('agentfuse.server.api.get_all_runs') as m_runs, \
+         patch('agentfuse.server.api.get_run') as m_run, \
+         patch('agentfuse.server.api.get_incidents') as m_incidents, \
+         patch('agentfuse.server.api.get_incident') as m_incident, \
+         patch('agentfuse.server.api.get_events_for_run') as m_events, \
+         patch('agentfuse.server.api.get_audit_events_for_run') as m_audits, \
+         patch('agentfuse.server.api.protection_controller') as m_controller:
          
         yield {
             "runs": m_runs,

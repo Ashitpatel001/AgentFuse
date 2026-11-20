@@ -1,6 +1,6 @@
-# CortexHeal — Enterprise Bare-Metal Deployment & Production Guide
+# AgentFuse — Enterprise Bare-Metal Deployment & Production Guide
 
-This guide details the complete production deployment itinerary for **CortexHeal: The Automated Circuit Breaker & Safety Firewall for Autonomous AI Agents**.
+This guide details the complete production deployment itinerary for **AgentFuse: The Automated Circuit Breaker & Safety Firewall for Autonomous AI Agents**.
 
 It covers both **Option 1: Docker Compose (All-in-One)** and **Option 2: Native Bare-Metal (Native PostgreSQL Binaries + Systemd)**.
 
@@ -9,7 +9,7 @@ It covers both **Option 1: Docker Compose (All-in-One)** and **Option 2: Native 
 ## Architecture & Data Residency
 
 ```
-           COMPANY / CUSTOMER INFRASTRUCTURE                     CORTEXHEAL CONTROL PLANE
+           COMPANY / CUSTOMER INFRASTRUCTURE                     AGENTFUSE CONTROL PLANE
     ┌───────────────────────────────────────────┐         ┌─────────────────────────────────────┐
     │   AI Agent Application (K8s / Lambda)     │         │      Bare-Metal / VPC Server        │
     │                                           │         │                                     │
@@ -33,10 +33,10 @@ It covers both **Option 1: Docker Compose (All-in-One)** and **Option 2: Native 
 
 | Component | Location | What is Stored |
 |---|---|---|
-| **Agent Logic & Prompts** | Customer's Server / Worker | Python source files, prompts, vector database, LangGraph state graph. CortexHeal **never** hosts or executes raw agent logic. |
-| **Customer Private PII** | Customer's Datacenter | **Never transmitted** to CortexHeal. Only SHA-256 cryptographic fingerprints are sent. |
-| **CortexHeal PostgreSQL** | Control Plane Server (`cortexheal_db`) | `runs` (agent ID, framework, status, token counts, cost)<br>`events` (step transitions, SHA-256 state hashes)<br>`incidents` (stuck loop trips, budget exceedances)<br>`recovery_plans` (suggested corrective prompt modifications & audits)<br>`organizations`, `users`, `api_keys` (RBAC & multi-tenancy) |
-| **PostgreSQL On-Disk Location** | Bare-Metal Disk | Native binaries: `/var/lib/postgresql/15/main` (or custom mount `/mnt/nvme/postgres_data`).<br>Docker: `/opt/cortexheal/data/postgres`. |
+| **Agent Logic & Prompts** | Customer's Server / Worker | Python source files, prompts, vector database, LangGraph state graph. AgentFuse **never** hosts or executes raw agent logic. |
+| **Customer Private PII** | Customer's Datacenter | **Never transmitted** to AgentFuse. Only SHA-256 cryptographic fingerprints are sent. |
+| **AgentFuse PostgreSQL** | Control Plane Server (`agentfuse_db`) | `runs` (agent ID, framework, status, token counts, cost)<br>`events` (step transitions, SHA-256 state hashes)<br>`incidents` (stuck loop trips, budget exceedances)<br>`recovery_plans` (suggested corrective prompt modifications & audits)<br>`organizations`, `users`, `api_keys` (RBAC & multi-tenancy) |
+| **PostgreSQL On-Disk Location** | Bare-Metal Disk | Native binaries: `/var/lib/postgresql/15/main` (or custom mount `/mnt/nvme/postgres_data`).<br>Docker: `/opt/agentfuse/data/postgres`. |
 
 ---
 
@@ -44,16 +44,16 @@ It covers both **Option 1: Docker Compose (All-in-One)** and **Option 2: Native 
 
 ### 1. Host Preparation
 ```bash
-sudo mkdir -p /opt/cortexheal/data/postgres
-sudo mkdir -p /opt/cortexheal/backups
-sudo chown -R 999:999 /opt/cortexheal/data/postgres
+sudo mkdir -p /opt/agentfuse/data/postgres
+sudo mkdir -p /opt/agentfuse/backups
+sudo chown -R 999:999 /opt/agentfuse/data/postgres
 sudo systemctl enable docker
 ```
 
 ### 2. Clone & Configure
 ```bash
-git clone <your-repo-url> /opt/cortexheal/app
-cd /opt/cortexheal/app
+git clone <your-repo-url> /opt/agentfuse/app
+cd /opt/agentfuse/app
 
 cp .env.production.example .env.production
 nano .env.production
@@ -61,25 +61,25 @@ nano .env.production
 
 Key variables to set:
 - `POSTGRES_PASSWORD`: Strong 32+ character random string.
-- `DATABASE_URL`: `postgresql://cortexheal:${POSTGRES_PASSWORD}@postgres:5432/cortexheal_db`
+- `DATABASE_URL`: `postgresql://agentfuse:${POSTGRES_PASSWORD}@postgres:5432/agentfuse_db`
 - `REDIS_URL`: `redis://redis:6379/0`
-- `CORTEXHEAL_CORS_ORIGINS`: `https://yourdomain.com,https://app.yourdomain.com`
+- `AGENTFUSE_CORS_ORIGINS`: `https://yourdomain.com,https://app.yourdomain.com`
 - `ALLOW_DEV_TOKENS`: `False`
 
 ### 3. Build Frontends
 ```bash
 # Dashboard SPA
-cd /opt/cortexheal/app/frontend
+cd /opt/agentfuse/app/frontend
 npm ci && npm run build
 
 # Marketing Site
-cd /opt/cortexheal/app/site
+cd /opt/agentfuse/app/site
 npm ci && npm run build
 ```
 
 ### 4. Launch Stack
 ```bash
-cd /opt/cortexheal/app
+cd /opt/agentfuse/app
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 The database migrations execute automatically on API boot via `init_db()`.
@@ -97,9 +97,9 @@ psql --version  # e.g., PostgreSQL 15.x / 16.x
 
 # Switch to postgres user and create database + credentials
 sudo -u postgres psql <<EOF
-CREATE USER cortexheal WITH ENCRYPTED PASSWORD 'your_super_strong_password';
-CREATE DATABASE cortexheal_db OWNER cortexheal;
-GRANT ALL PRIVILEGES ON DATABASE cortexheal_db TO cortexheal;
+CREATE USER agentfuse WITH ENCRYPTED PASSWORD 'your_super_strong_password';
+CREATE DATABASE agentfuse_db OWNER agentfuse;
+GRANT ALL PRIVILEGES ON DATABASE agentfuse_db TO agentfuse;
 EOF
 ```
 
@@ -109,7 +109,7 @@ Data files will reside in the native directory configured by your OS package man
 
 ### 2. Set Up Python Environment & Apply Schema
 ```bash
-cd /opt/cortexheal/app
+cd /opt/agentfuse/app
 
 # Create virtual environment
 python3.11 -m venv .venv
@@ -119,15 +119,15 @@ pip install -r requirements.txt
 pip install -e .
 
 # Initialize schema and run migrations
-python -c "from cortexheal.storage.postgres import init_db; init_db()"
+python -c "from agentfuse.storage.postgres import init_db; init_db()"
 ```
 
-### 3. Create Systemd Service for CortexHeal API
-Create `/etc/systemd/system/cortexheal.service`:
+### 3. Create Systemd Service for AgentFuse API
+Create `/etc/systemd/system/agentfuse.service`:
 
 ```ini
 [Unit]
-Description=CortexHeal Autonomous AI Circuit Breaker Control Plane
+Description=AgentFuse Autonomous AI Circuit Breaker Control Plane
 After=network.target postgresql.service redis.service
 Requires=postgresql.service redis.service
 
@@ -135,9 +135,9 @@ Requires=postgresql.service redis.service
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/opt/cortexheal/app
-EnvironmentFile=/opt/cortexheal/app/.env.production
-ExecStart=/opt/cortexheal/app/.venv/bin/uvicorn cortexheal.server.api:app --host 127.0.0.1 --port 8000 --workers 4 --proxy-headers
+WorkingDirectory=/opt/agentfuse/app
+EnvironmentFile=/opt/agentfuse/app/.env.production
+ExecStart=/opt/agentfuse/app/.venv/bin/uvicorn agentfuse.server.api:app --host 127.0.0.1 --port 8000 --workers 4 --proxy-headers
 Restart=always
 RestartSec=3
 LimitNOFILE=65535
@@ -149,8 +149,8 @@ WantedBy=multi-user.target
 Enable and start:
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now cortexheal
-sudo systemctl status cortexheal
+sudo systemctl enable --now agentfuse
+sudo systemctl status agentfuse
 ```
 
 ---
@@ -168,7 +168,7 @@ sudo apt update && sudo apt install caddy
 ```
 
 ### 2. Configure `/etc/caddy/Caddyfile`
-Copy [`deploy/Caddyfile`](file:///D:/Cortexheal-20261002T102412Z-1-001/Cortexheal/deploy/Caddyfile) to `/etc/caddy/Caddyfile`:
+Copy [`deploy/Caddyfile`](deploy/Caddyfile) to `/etc/caddy/Caddyfile`:
 
 ```caddyfile
 yourdomain.com, www.yourdomain.com {
@@ -196,14 +196,14 @@ yourdomain.com, www.yourdomain.com {
 
     # 5. Dashboard SPA (/dashboard)
     handle /dashboard* {
-        root * /opt/cortexheal/app/frontend/dist
+        root * /opt/agentfuse/app/frontend/dist
         uri strip_prefix /dashboard
         try_files {path} /index.html
         file_server
     }
 
     # 6. Public Marketing Site (Catch-all)
-    root * /opt/cortexheal/app/site/dist
+    root * /opt/agentfuse/app/site/dist
     try_files {path} /index.html
     file_server
 
@@ -241,16 +241,16 @@ curl -N https://yourdomain.com/api/stream
 
 ## Automated Database Backups
 
-Create `/etc/cron.daily/cortexheal-backup`:
+Create `/etc/cron.daily/agentfuse-backup`:
 
 ```bash
 #!/bin/bash
-BACKUP_DIR="/opt/cortexheal/backups"
+BACKUP_DIR="/opt/agentfuse/backups"
 TIMESTAMP=$(date +\%Y\%m\%d_\%H\%M\%S)
 mkdir -p "$BACKUP_DIR"
 
 # For native PG:
-sudo -u postgres pg_dump cortexheal_db | gzip > "$BACKUP_DIR/db_$TIMESTAMP.sql.gz"
+sudo -u postgres pg_dump agentfuse_db | gzip > "$BACKUP_DIR/db_$TIMESTAMP.sql.gz"
 
 # Retain 30 days of archives
 find "$BACKUP_DIR" -name "db_*.sql.gz" -mtime +30 -delete
@@ -258,5 +258,5 @@ find "$BACKUP_DIR" -name "db_*.sql.gz" -mtime +30 -delete
 
 Make it executable:
 ```bash
-sudo chmod +x /etc/cron.daily/cortexheal-backup
+sudo chmod +x /etc/cron.daily/agentfuse-backup
 ```

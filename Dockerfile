@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy project files
 COPY pyproject.toml README.md ./
-COPY cortexheal/ ./cortexheal/
+COPY agentfuse/ ./agentfuse/
 COPY scripts/ ./scripts/
 # Migrations are the single source of truth for the schema and MUST ship with
 # the image (the app applies them at startup via init_db()).
@@ -26,14 +26,14 @@ COPY migrations/ ./migrations/
 
 # The package installs non-editable (runs from site-packages), so point the
 # migration runner at the copied migrations explicitly.
-ENV CORTEXHEAL_MIGRATIONS_DIR=/app/migrations
+ENV AGENTFUSE_MIGRATIONS_DIR=/app/migrations
 
 # Install the application and its dependencies without editable mode
 RUN pip install --no-cache-dir .
 
 # Create a non-root user for security and adjust permissions
-RUN useradd -m cortexhealuser && chown -R cortexhealuser:cortexhealuser /app
-USER cortexhealuser
+RUN useradd -m agentfuseuser && chown -R agentfuseuser:agentfuseuser /app
+USER agentfuseuser
 
 # Add HEALTHCHECK
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
@@ -43,4 +43,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 EXPOSE 8000
 
 # Start Uvicorn server
-CMD ["uvicorn", "cortexheal.server.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "agentfuse.server.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

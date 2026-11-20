@@ -5,12 +5,12 @@ import io
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
-from cortexheal.server.api import app
-from cortexheal.models.incident import Incident
-from cortexheal.models.run import AgentRun
-from cortexheal.models.protection import AuditEvent
-from cortexheal.models.recovery import RecoveryPlan
-from cortexheal.storage.postgres import (
+from agentfuse.server.api import app
+from agentfuse.models.incident import Incident
+from agentfuse.models.run import AgentRun
+from agentfuse.models.protection import AuditEvent
+from agentfuse.models.recovery import RecoveryPlan
+from agentfuse.storage.postgres import (
     save_incident, save_run, save_audit_event, save_recovery_plan, init_db
 )
 
@@ -89,7 +89,7 @@ def test_audit_export_csv_format():
     res = client.get("/api/audit/export?format=csv", headers={"X-API-Key": "dev-admin-key"})
     assert res.status_code == 200
     assert "text/csv" in res.headers["content-type"]
-    assert "attachment; filename=\"cortexheal_audit_export_" in res.headers["content-disposition"]
+    assert "attachment; filename=\"agentfuse_audit_export_" in res.headers["content-disposition"]
 
     # Parse CSV content
     content = res.text

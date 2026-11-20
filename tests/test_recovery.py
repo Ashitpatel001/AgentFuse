@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import patch
-from cortexheal.models.recovery import RecoveryPlan, RecoveryAction
-from cortexheal.models.incident import Incident
-from cortexheal.models.run import AgentRun
-from cortexheal.recovery.engine import RecoveryEngine
-from cortexheal.recovery.policy import PolicyEngine
-from cortexheal.recovery.executor import RecoveryExecutor
+from agentfuse.models.recovery import RecoveryPlan, RecoveryAction
+from agentfuse.models.incident import Incident
+from agentfuse.models.run import AgentRun
+from agentfuse.recovery.engine import RecoveryEngine
+from agentfuse.recovery.policy import PolicyEngine
+from agentfuse.recovery.executor import RecoveryExecutor
 import uuid
 
 def test_recovery_engine_deterministic():
@@ -24,13 +24,13 @@ def test_recovery_engine_deterministic():
         threshold=3
     )
     
-    with patch('cortexheal.recovery.engine.get_recovery_plan_by_incident', return_value=None):
-        with patch('cortexheal.recovery.engine.get_run', return_value=AgentRun(framework="langgraph", run_id="run1", agent_id="agent1", status="paused", start_time="2026-08-08T00:00:00Z", last_updated="2026-08-08T00:00:00Z")):
-            with patch('cortexheal.recovery.engine.get_events_for_run', return_value=[]):
-                with patch('cortexheal.recovery.engine.save_audit_event'):
-                    with patch('cortexheal.recovery.policy.get_audit_events_for_run', return_value=[]):
-                        with patch('cortexheal.recovery.engine.save_recovery_plan'):
-                            with patch('cortexheal.recovery.engine.RecoveryExecutor.execute_plan') as mock_exec:
+    with patch('agentfuse.recovery.engine.get_recovery_plan_by_incident', return_value=None):
+        with patch('agentfuse.recovery.engine.get_run', return_value=AgentRun(framework="langgraph", run_id="run1", agent_id="agent1", status="paused", start_time="2026-08-08T00:00:00Z", last_updated="2026-08-08T00:00:00Z")):
+            with patch('agentfuse.recovery.engine.get_events_for_run', return_value=[]):
+                with patch('agentfuse.recovery.engine.save_audit_event'):
+                    with patch('agentfuse.recovery.policy.get_audit_events_for_run', return_value=[]):
+                        with patch('agentfuse.recovery.engine.save_recovery_plan'):
+                            with patch('agentfuse.recovery.engine.RecoveryExecutor.execute_plan') as mock_exec:
                                 plan = engine.generate_plan(incident)
             
     assert plan.diagnosis == "The agent appears to be repeatedly invoking the same tool without observable progress."
@@ -63,15 +63,15 @@ def test_policy_engine():
     )
     assert not policy.evaluate_plan(plan, "OPERATOR")
 
-@patch('cortexheal.recovery.executor.save_recovery_plan')
-@patch('cortexheal.recovery.executor.save_recovery_action')
-@patch('cortexheal.recovery.executor.save_audit_event')
-@patch('cortexheal.recovery.executor.save_recovery_outcome')
-@patch('cortexheal.recovery.executor.get_incident', return_value=Incident(run_id="run1", agent_id="test", failure_type="STUCK_LOOP", description="test", evidence={}, severity="HIGH", detector="test", detector_version="test", trigger_event_id="test", observed_value=3, threshold=3))
-@patch('cortexheal.recovery.executor.PatternEngine.get_or_create_pattern')
-@patch('cortexheal.recovery.executor.ProtectionController')
-@patch('cortexheal.recovery.executor.get_run', return_value=AgentRun(framework="langgraph", run_id="run1", agent_id="agent1", status="paused", start_time="2026-08-08T00:00:00Z", last_updated="2026-08-08T00:00:00Z"))
-@patch('cortexheal.recovery.executor.get_events_for_run', return_value=[])
+@patch('agentfuse.recovery.executor.save_recovery_plan')
+@patch('agentfuse.recovery.executor.save_recovery_action')
+@patch('agentfuse.recovery.executor.save_audit_event')
+@patch('agentfuse.recovery.executor.save_recovery_outcome')
+@patch('agentfuse.recovery.executor.get_incident', return_value=Incident(run_id="run1", agent_id="test", failure_type="STUCK_LOOP", description="test", evidence={}, severity="HIGH", detector="test", detector_version="test", trigger_event_id="test", observed_value=3, threshold=3))
+@patch('agentfuse.recovery.executor.PatternEngine.get_or_create_pattern')
+@patch('agentfuse.recovery.executor.ProtectionController')
+@patch('agentfuse.recovery.executor.get_run', return_value=AgentRun(framework="langgraph", run_id="run1", agent_id="agent1", status="paused", start_time="2026-08-08T00:00:00Z", last_updated="2026-08-08T00:00:00Z"))
+@patch('agentfuse.recovery.executor.get_events_for_run', return_value=[])
 def test_executor_approve(mock_events, mock_get_run, mock_pc_cls, mock_pattern, mock_incident, mock_save_outcome, mock_audit, mock_save_act, mock_save_plan):
     mock_pc = mock_pc_cls.return_value
     executor = RecoveryExecutor()
@@ -94,12 +94,12 @@ def test_executor_approve(mock_events, mock_get_run, mock_pc_cls, mock_pattern, 
     # Verify protection controller was called
     mock_pc.resume.assert_called_once_with("run1", actor_id="test_user", reason="test", incident_id="inc1")
 
-@patch('cortexheal.recovery.executor.save_recovery_plan')
-@patch('cortexheal.recovery.executor.save_audit_event')
-@patch('cortexheal.recovery.executor.save_recovery_outcome', return_value=None)
-@patch('cortexheal.recovery.executor.get_incident', return_value=Incident(run_id="run1", agent_id="test", failure_type="STUCK_LOOP", description="test", evidence={}, severity="HIGH", detector="test", detector_version="test", trigger_event_id="test", observed_value=3, threshold=3))
-@patch('cortexheal.recovery.executor.get_events_for_run', return_value=[])
-@patch('cortexheal.recovery.executor.PatternEngine.get_or_create_pattern')
+@patch('agentfuse.recovery.executor.save_recovery_plan')
+@patch('agentfuse.recovery.executor.save_audit_event')
+@patch('agentfuse.recovery.executor.save_recovery_outcome', return_value=None)
+@patch('agentfuse.recovery.executor.get_incident', return_value=Incident(run_id="run1", agent_id="test", failure_type="STUCK_LOOP", description="test", evidence={}, severity="HIGH", detector="test", detector_version="test", trigger_event_id="test", observed_value=3, threshold=3))
+@patch('agentfuse.recovery.executor.get_events_for_run', return_value=[])
+@patch('agentfuse.recovery.executor.PatternEngine.get_or_create_pattern')
 def test_executor_reject(mock_pattern, mock_events, mock_incident, mock_save_outcome, mock_audit, mock_save_plan):
     executor = RecoveryExecutor()
     plan = RecoveryPlan(

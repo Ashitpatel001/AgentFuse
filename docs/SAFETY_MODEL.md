@@ -20,7 +20,7 @@ These are the only two intervention actions in V1. The dashboard exposes exactly
 
 ## Core Safety Principles
 
-*   **Fail-Safe Behavior:** If the CortexHeal engine is unavailable or errors out, the SDK adapter defaults to **PAUSE**. Never silently continue a potentially unsafe execution.
+*   **Fail-Safe Behavior:** If the AgentFuse engine is unavailable or errors out, the SDK adapter defaults to **PAUSE**. Never silently continue a potentially unsafe execution.
 *   **Zero LLMs in Decision Path:** All safety decisions (pause, circuit-break) are made by deterministic rules (SHA-256 hash matching, exact threshold math). No LLM evaluator in the loop.
 *   **Policy Evaluation:** Policies are evaluated synchronously on critical events (before tool execution) to prevent out-of-band runaway.
 *   **Audit Requirements:** Every intervention (PAUSE, RESUME) is logged to PostgreSQL with an immutable `idempotency_key`, timestamp, and actor identity.

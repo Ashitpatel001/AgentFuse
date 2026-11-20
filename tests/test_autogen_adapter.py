@@ -1,13 +1,13 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from cortexheal.adapters.autogen import AutoGenAdapter, AutoGenSafetyGate
+from agentfuse.adapters.autogen import AutoGenAdapter, AutoGenSafetyGate
 
 def test_autogen_adapter_initialization():
     adapter = AutoGenAdapter("agent1")
     assert adapter.framework_name == "AutoGen"
     assert adapter.agent_id == "agent1"
     
-@patch('cortexheal.adapters.autogen.collector')
+@patch('agentfuse.adapters.autogen.collector')
 def test_autogen_telemetry(mock_collector):
     adapter = AutoGenAdapter("agent1")
     telemetry = adapter.get_telemetry_callback()
@@ -32,10 +32,10 @@ def test_autogen_telemetry(mock_collector):
     event3 = mock_collector.ingest_event.call_args[0][0]
     assert event3.event_type == "LLM_CALL_COMPLETED"
 
-@patch('cortexheal.storage.postgres.get_run')
-@patch('cortexheal.storage.postgres.update_run_status')
-@patch('cortexheal.storage.postgres.save_audit_event')
-@patch('cortexheal.storage.postgres.update_run_protection_mode')
+@patch('agentfuse.storage.postgres.get_run')
+@patch('agentfuse.storage.postgres.update_run_status')
+@patch('agentfuse.storage.postgres.save_audit_event')
+@patch('agentfuse.storage.postgres.update_run_protection_mode')
 def test_autogen_safety_gate_pause(mock_update_mode, mock_audit, mock_update, mock_get_run):
     gate = AutoGenSafetyGate("run1")
     
@@ -46,7 +46,7 @@ def test_autogen_safety_gate_pause(mock_update_mode, mock_audit, mock_update, mo
     mock_get_run.return_value = MockRun()
     
     # AutoGen throws InterruptedError when paused
-    with pytest.raises(InterruptedError, match="Paused by CortexHeal"):
+    with pytest.raises(InterruptedError, match="Paused by AgentFuse"):
         gate("msg", "sender", "recipient", False)
         
     mock_update.assert_called_with("run1", "paused")

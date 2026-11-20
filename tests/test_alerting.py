@@ -5,16 +5,16 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
-from cortexheal.server.api import app
-from cortexheal.models.incident import Incident
-from cortexheal.models.run import AgentRun
-from cortexheal.models.alerting import WebhookConfig, NotificationRecord
-from cortexheal.alerting.dispatcher import alert_dispatcher, AlertDispatcher
-from cortexheal.storage.postgres import (
+from agentfuse.server.api import app
+from agentfuse.models.incident import Incident
+from agentfuse.models.run import AgentRun
+from agentfuse.models.alerting import WebhookConfig, NotificationRecord
+from agentfuse.alerting.dispatcher import alert_dispatcher, AlertDispatcher
+from agentfuse.storage.postgres import (
     save_webhook_config, get_webhook_configs_by_org, get_notifications_by_org,
     save_incident, save_run, init_db
 )
-from cortexheal.config import settings
+from agentfuse.config import settings
 
 client = TestClient(app)
 

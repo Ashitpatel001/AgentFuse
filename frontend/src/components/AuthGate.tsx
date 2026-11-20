@@ -79,7 +79,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       /* best-effort */
     }
     clearApiKey();
-    sessionStorage.removeItem("cortexheal_role");
+    sessionStorage.removeItem("agentfuse_role");
     setUser(null);
     queryClient.clear();
   }
@@ -166,12 +166,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
                   <button
                     type="button"
                     onClick={() => {
-                      setEmail("admin@cortexheal.com");
+                      setEmail("admin@agentfuse.com");
                       setPassword("admin123");
                     }}
                     className="text-accent hover:underline hover:text-accent-hover font-semibold"
                   >
-                    admin@cortexheal.com / admin123
+                    admin@agentfuse.com / admin123
                   </button>
                 </div>
               </form>
@@ -229,7 +229,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
           {/* Demo link */}
           <div className="text-center mt-6">
-            <p className="text-[11px] text-text-muted mb-2">Want to see CortexHeal in action?</p>
+            <p className="text-[11px] text-text-muted mb-2">Want to see AgentFuse in action?</p>
             <button
               onClick={() => handleApiKeyLogin("ctx_viewer_public_demo_key_12345")}
               disabled={loading}

@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from cortexheal.storage.postgres import (
+from agentfuse.storage.postgres import (
     init_db, save_run, get_connection, purge_events_older_than, get_events_for_run,
 )
-from cortexheal.models.run import AgentRun
+from agentfuse.models.run import AgentRun
 
 
 @pytest.fixture(autouse=True)

@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════
-# CortexHeal — Production Docker Compose
+# AgentFuse — Production Docker Compose
 # ═══════════════════════════════════════════════════════════
 # This file is for bare-metal / self-hosted production deployments.
 # The original docker-compose.yml is preserved for local development.
@@ -8,8 +8,8 @@
 #   docker compose -f docker-compose.prod.yml up -d
 #
 # Prerequisites (human steps — see DEPLOYMENT.md):
-#   1. Create /opt/cortexheal/data/postgres on the host
-#   2. Create /opt/cortexheal/backups on the host
+#   1. Create /opt/agentfuse/data/postgres on the host
+#   2. Create /opt/agentfuse/backups on the host
 #   3. Copy .env.production.example → .env.production and fill real values
 # ═══════════════════════════════════════════════════════════
 
@@ -19,22 +19,22 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_USER: cortexheal
+      POSTGRES_USER: agentfuse
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
-      POSTGRES_DB: cortexheal_db
+      POSTGRES_DB: agentfuse_db
     volumes:
       # Bind mount — survives container recreation, easy to back up from host
-      - /opt/cortexheal/data/postgres:/var/lib/postgresql/data
+      - /opt/agentfuse/data/postgres:/var/lib/postgresql/data
     ports:
       # Only expose on loopback — Caddy reverse-proxies the API, not Postgres
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cortexheal -d cortexheal_db"]
+      test: ["CMD-SHELL", "pg_isready -U agentfuse -d agentfuse_db"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - cortexheal
+      - agentfuse
 
   # ── Redis (SSE fan-out + per-org rate limiting) ───────────
   redis:
@@ -46,7 +46,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - cortexheal
+      - agentfuse
 
   # ── Backend API ───────────────────────────────────────────
   api:
@@ -64,13 +64,13 @@ services:
     environment:
       # Override DATABASE_URL to point at the Postgres container on the
       # Docker network (not localhost — containers resolve by service name)
-      DATABASE_URL: postgresql://cortexheal:${POSTGRES_PASSWORD}@postgres:5432/cortexheal_db
+      DATABASE_URL: postgresql://agentfuse:${POSTGRES_PASSWORD}@postgres:5432/agentfuse_db
       # Redis on the compose network → cross-worker SSE fan-out + rate limiting.
       REDIS_URL: redis://redis:6379/0
     ports:
       - "127.0.0.1:8000:8000"
     networks:
-      - cortexheal
+      - agentfuse
 
   # ── Demo Runner (supervised) ──────────────────────────────
   demo-runner:
@@ -86,7 +86,7 @@ services:
     env_file:
       - .env.production
     environment:
-      DATABASE_URL: postgresql://cortexheal:${POSTGRES_PASSWORD}@postgres:5432/cortexheal_db
+      DATABASE_URL: postgresql://agentfuse:${POSTGRES_PASSWORD}@postgres:5432/agentfuse_db
       REDIS_URL: redis://redis:6379/0
       DEMO_ORG_ID: demo_public
     # The demo scenarios drive real LangGraph agents, so this container needs the
@@ -94,8 +94,8 @@ services:
     # start to keep the shared base image lean.
     command: ["sh", "-c", "pip install --no-cache-dir 'langgraph>=0.0.10' 'langchain-core>=0.1.0' && python scripts/cron_demo_runner.py"]
     networks:
-      - cortexheal
+      - agentfuse
 
 networks:
-  cortexheal:
+  agentfuse:
     driver: bridge

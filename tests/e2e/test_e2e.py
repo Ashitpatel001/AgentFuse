@@ -1,12 +1,12 @@
 import pytest
-from cortexheal.storage.postgres import get_run, get_recovery_plan_by_incident, get_audit_events_for_run
+from agentfuse.storage.postgres import get_run, get_recovery_plan_by_incident, get_audit_events_for_run
 import time
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
-from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
-from cortexheal.server.api import app
-from cortexheal.config import settings
+from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
+from agentfuse.server.api import app
+from agentfuse.config import settings
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from typing import TypedDict
@@ -17,8 +17,8 @@ class AgentState(TypedDict, total=False):
     run_id: str
 
 def agent_node(state: AgentState):
-    from cortexheal.models.events import RuntimeEvent
-    from cortexheal.runtime.collector import collector
+    from agentfuse.models.events import RuntimeEvent
+    from agentfuse.runtime.collector import collector
     current_run_id = state.get("run_id", "e2e_run_123")
     # Emit an event simulating a tool call
     event = RuntimeEvent(
@@ -46,13 +46,13 @@ def should_continue(state: AgentState):
 
 @pytest.fixture(autouse=True)
 def clean_db():
-    from cortexheal.storage.postgres import init_db, get_connection
+    from agentfuse.storage.postgres import init_db, get_connection
     init_db()
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("TRUNCATE TABLE audit_events, recovery_plans, notification_records, webhook_configs, incidents, events, runs, api_keys CASCADE")
             conn.commit()
-    from cortexheal.runtime.collector import collector
+    from agentfuse.runtime.collector import collector
     collector.engine._emitted.clear()
     
     yield
@@ -61,10 +61,10 @@ def clean_db():
 def test_full_lifecycle_e2e(clean_db):
     # 1. Developer Setup & Initialization
     adapter = LangGraphAdapter(agent_id="e2e_agent")
-    cortex = CortexHeal(adapter=adapter)
+    cortex = AgentFuse(adapter=adapter)
     
     # Configure safety threshold lower for test speed
-    from cortexheal.runtime.collector import collector
+    from agentfuse.runtime.collector import collector
     collector.engine.detectors[0].config.repetition_threshold = 4
     
     builder = StateGraph(AgentState)
@@ -145,9 +145,9 @@ def test_full_lifecycle_unrecoverable_loop_e2e(clean_db):
     
     # 1. Developer Setup
     adapter = LangGraphAdapter(agent_id="unrecov_agent")
-    cortex = CortexHeal(adapter=adapter)
+    cortex = AgentFuse(adapter=adapter)
     
-    from cortexheal.runtime.collector import collector
+    from agentfuse.runtime.collector import collector
     collector.engine.detectors[0].config.repetition_threshold = 4
     
     builder = StateGraph(AgentState)

@@ -2,15 +2,15 @@ import pytest
 import time
 from unittest.mock import patch, MagicMock
 
-from cortexheal.adapters.langgraph import CortexHealLangGraphCallback
+from agentfuse.adapters.langgraph import AgentFuseLangGraphCallback
 from langchain_core.outputs import LLMResult, Generation
-from cortexheal.models.events import RuntimeEvent
+from agentfuse.models.events import RuntimeEvent
 
 @pytest.fixture
 def callback():
-    return CortexHealLangGraphCallback(agent_id="test_agent")
+    return AgentFuseLangGraphCallback(agent_id="test_agent")
 
-@patch('cortexheal.adapters.langgraph.collector')
+@patch('agentfuse.adapters.langgraph.collector')
 def test_on_chain_start_emits_run_started(mock_collector, callback):
     callback.on_chain_start({}, {})
     assert mock_collector.ingest_event.call_count == 1
@@ -18,7 +18,7 @@ def test_on_chain_start_emits_run_started(mock_collector, callback):
     assert event.event_type == 'RUN_STARTED'
     assert event.sequence_number == 1
 
-@patch('cortexheal.adapters.langgraph.collector')
+@patch('agentfuse.adapters.langgraph.collector')
 def test_on_llm_cycle(mock_collector, callback):
     callback._ensure_run_started()
     mock_collector.reset_mock()
@@ -45,7 +45,7 @@ def test_on_llm_cycle(mock_collector, callback):
     assert end_event.latency_ms is not None
     assert end_event.latency_ms > 0
 
-@patch('cortexheal.adapters.langgraph.collector')
+@patch('agentfuse.adapters.langgraph.collector')
 def test_fail_open_telemetry(mock_collector, callback):
     # Simulate Postgres failure by making ingest_event raise Exception
     mock_collector.ingest_event.side_effect = Exception("DB Connection Failed")

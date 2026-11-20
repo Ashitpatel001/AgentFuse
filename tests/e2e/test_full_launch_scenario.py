@@ -8,14 +8,14 @@ import uuid
 import httpx
 from fastapi.testclient import TestClient
 
-from cortexheal.server.api import app
-from cortexheal.models.events import RuntimeEvent, TokenUsage
-from cortexheal.models.run import AgentRun
-from cortexheal.runtime.collector import collector
-from cortexheal.storage.postgres import (
+from agentfuse.server.api import app
+from agentfuse.models.events import RuntimeEvent, TokenUsage
+from agentfuse.models.run import AgentRun
+from agentfuse.runtime.collector import collector
+from agentfuse.storage.postgres import (
     init_db, get_connection, get_run, save_run, get_incidents, save_api_key, get_api_key_by_hash
 )
-from cortexheal.models.auth import ApiKey, hash_key, generate_raw_key
+from agentfuse.models.auth import ApiKey, hash_key, generate_raw_key
 
 client = TestClient(app)
 

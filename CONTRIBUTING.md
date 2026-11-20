@@ -21,7 +21,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ### Clone & Environment Setup
 ```bash
-git clone https://github.com/Ashitpatel001/Cortexheal.git agentfuse
+git clone https://github.com/Ashitpatel001/AgentFuse.git agentfuse
 cd agentfuse
 
 # Create and activate Python virtual environment

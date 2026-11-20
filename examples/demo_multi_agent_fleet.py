@@ -1,5 +1,5 @@
 """
-CortexHeal Demo: Multi-Agent Enterprise Fleet Simulation
+AgentFuse Demo: Multi-Agent Enterprise Fleet Simulation
 --------------------------------------------------------
 Simulates 5 distinct enterprise agent workloads running in parallel across
 LangGraph, AutoGen, and CrewAI frameworks, generating realistic mix of healthy
@@ -10,9 +10,9 @@ import time
 import uuid
 from typing import Dict, Any
 
-from cortexheal.runtime.collector import RuntimeCollector
-from cortexheal.models.events import RuntimeEvent, TokenUsage
-from cortexheal.storage.postgres import get_run, get_incidents, init_db
+from agentfuse.runtime.collector import RuntimeCollector
+from agentfuse.models.events import RuntimeEvent, TokenUsage
+from agentfuse.storage.postgres import get_run, get_incidents, init_db
 
 AGENTS = [
     {
@@ -127,7 +127,7 @@ def simulate_agent(collector: RuntimeCollector, spec: Dict[str, Any]):
 
 def main():
     print("=" * 75)
-    print("  CORTEXHEAL MULTI-AGENT ENTERPRISE FLEET SIMULATION")
+    print("  AGENTFUSE MULTI-AGENT ENTERPRISE FLEET SIMULATION")
     print("=" * 75)
 
     init_db()

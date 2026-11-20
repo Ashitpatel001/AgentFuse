@@ -12,10 +12,10 @@ import uuid
 
 import pytest
 
-from cortexheal.detection.engine import DetectionEngine
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.models.run import AgentRun
-from cortexheal.storage.postgres import init_db, save_run, save_event
+from agentfuse.detection.engine import DetectionEngine
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.models.run import AgentRun
+from agentfuse.storage.postgres import init_db, save_run, save_event
 
 
 @pytest.fixture(autouse=True)

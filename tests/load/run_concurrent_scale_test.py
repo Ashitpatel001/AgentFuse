@@ -16,14 +16,14 @@ if sys.platform == "win32":
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from cortexheal import CortexHeal
-from cortexheal.adapters.langgraph import LangGraphAdapter
-from cortexheal.models.events import RuntimeEvent, TokenUsage
-from cortexheal.runtime.collector import RuntimeCollector
-from cortexheal.storage.postgres import get_incidents, get_run, init_db, save_run, get_connection
-from cortexheal.models.run import AgentRun
-from cortexheal.models.auth import ApiKey, hash_key, generate_raw_key
-from cortexheal.storage.postgres import save_api_key
+from agentfuse import AgentFuse
+from agentfuse.adapters.langgraph import LangGraphAdapter
+from agentfuse.models.events import RuntimeEvent, TokenUsage
+from agentfuse.runtime.collector import RuntimeCollector
+from agentfuse.storage.postgres import get_incidents, get_run, init_db, save_run, get_connection
+from agentfuse.models.run import AgentRun
+from agentfuse.models.auth import ApiKey, hash_key, generate_raw_key
+from agentfuse.storage.postgres import save_api_key
 
 # Target scale: 55 concurrent LangGraph agents + 55 concurrent SSE client streams
 CONCURRENT_AGENTS = 55
@@ -77,9 +77,9 @@ def run_single_langgraph_agent(agent_index: int, collector: RuntimeCollector, fa
     run_id = f"scale_run_{agent_index}_{uuid.uuid4().hex[:8]}"
     agent_id = f"worker_agent_{agent_index}"
     
-    # 1. Initialize LangGraph Adapter & CortexHeal SafetyGate
+    # 1. Initialize LangGraph Adapter & AgentFuse SafetyGate
     adapter = LangGraphAdapter(agent_id=agent_id)
-    cortex = CortexHeal(adapter=adapter)
+    cortex = AgentFuse(adapter=adapter)
 
     # 2. Register Run as ACTIVE in Storage
     save_run(AgentRun(
@@ -198,7 +198,7 @@ def run_single_langgraph_agent(agent_index: int, collector: RuntimeCollector, fa
 
 async def main():
     print("=" * 80)
-    print("  CORTEXHEAL ENTERPRISE CONCURRENT SCALE VERIFICATION (REAL SAFETY GATES)")
+    print("  AGENTFUSE ENTERPRISE CONCURRENT SCALE VERIFICATION (REAL SAFETY GATES)")
     print(f"  Target: {CONCURRENT_AGENTS} Parallel LangGraph Agents + {CONCURRENT_SSE_CLIENTS} Persistent SSE Clients")
     print("=" * 80)
 
@@ -339,9 +339,9 @@ async def main():
 
     from prometheus_client import REGISTRY
     for metric in REGISTRY.collect():
-        if metric.name == "cortexheal_ingestion_latency_seconds":
+        if metric.name == "agentfuse_ingestion_latency_seconds":
             print("\n" + "=" * 80)
-            print("  PROMETHEUS HISTOGRAM: cortexheal_ingestion_latency_seconds (/metrics)")
+            print("  PROMETHEUS HISTOGRAM: agentfuse_ingestion_latency_seconds (/metrics)")
             print("=" * 80)
             samples = metric.samples
             total_count = 0
@@ -361,7 +361,7 @@ async def main():
             if total_count > 0:
                 print(f"Mean Ingestion Time:   {(total_sum / total_count)*1000:.3f} ms")
             
-            print("\nHistogram Buckets (cortexheal_ingestion_latency_seconds_bucket):")
+            print("\nHistogram Buckets (agentfuse_ingestion_latency_seconds_bucket):")
             prev = 0
             for upper_bound, count in buckets:
                 delta = count - prev

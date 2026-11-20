@@ -1,7 +1,7 @@
 import pytest
-from cortexheal.learning.ml import MLDatasetBuilder, RecoveryPredictor, InsufficientData
-from cortexheal.models.incident import Incident
-from cortexheal.models.learning import RecoveryOutcome
+from agentfuse.learning.ml import MLDatasetBuilder, RecoveryPredictor, InsufficientData
+from agentfuse.models.incident import Incident
+from agentfuse.models.learning import RecoveryOutcome
 
 def test_ml_dataset_builder_does_not_leak_raw_tokens():
     evidence = {

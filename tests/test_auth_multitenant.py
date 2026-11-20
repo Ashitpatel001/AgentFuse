@@ -3,10 +3,10 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 import uuid
 
-from cortexheal.server.api import app
-from cortexheal.config import settings
-from cortexheal.models.auth import ApiKey, hash_key, generate_raw_key
-from cortexheal.storage.postgres import save_api_key, init_db
+from agentfuse.server.api import app
+from agentfuse.config import settings
+from agentfuse.models.auth import ApiKey, hash_key, generate_raw_key
+from agentfuse.storage.postgres import save_api_key, init_db
 
 client = TestClient(app)
 

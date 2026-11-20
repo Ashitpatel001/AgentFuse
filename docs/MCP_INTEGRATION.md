@@ -1,6 +1,6 @@
 # Model Context Protocol (MCP) Integration Guide
 
-CortexHeal includes a built-in MCP server that exposes real-time safety telemetry, open incidents, and execution timelines to AI coding assistants.
+AgentFuse includes a built-in MCP server that exposes real-time safety telemetry, open incidents, and execution timelines to AI coding assistants.
 
 ---
 
@@ -22,11 +22,11 @@ Add this to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "cortexheal": {
-      "command": "cortexheal",
+    "agentfuse": {
+      "command": "agentfuse",
       "args": ["mcp"],
       "env": {
-        "DATABASE_URL": "postgresql://cortexheal:cortexpassword@localhost:5433/cortexheal_db"
+        "DATABASE_URL": "postgresql://agentfuse:agentfusepassword@localhost:5433/agentfuse_db"
       }
     }
   }
@@ -39,11 +39,11 @@ Add a new MCP server configuration in your project's `.cursor/mcp.json` or assis
 ```json
 {
   "mcpServers": {
-    "cortexheal": {
+    "agentfuse": {
       "command": "python",
-      "args": ["-m", "cortexheal.mcp_server"],
+      "args": ["-m", "agentfuse.mcp_server"],
       "env": {
-        "DATABASE_URL": "postgresql://cortexheal:cortexpassword@localhost:5433/cortexheal_db"
+        "DATABASE_URL": "postgresql://agentfuse:agentfusepassword@localhost:5433/agentfuse_db"
       }
     }
   }
@@ -58,8 +58,8 @@ You can also run the MCP server directly from your terminal:
 
 ```bash
 # Using the CLI entrypoint
-cortexheal mcp
+agentfuse mcp
 
 # Or via Python module
-python -m cortexheal.mcp_server
+python -m agentfuse.mcp_server
 ```

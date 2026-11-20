@@ -2,13 +2,13 @@ import pytest
 import pytest
 from unittest.mock import patch, MagicMock
 
-from cortexheal.models.events import RuntimeEvent
-from cortexheal.models.run import AgentRun
-from cortexheal.storage.postgres import save_run, save_event, get_run, get_events_for_run
+from agentfuse.models.events import RuntimeEvent
+from agentfuse.models.run import AgentRun
+from agentfuse.storage.postgres import save_run, save_event, get_run, get_events_for_run
 
 @pytest.fixture(autouse=True)
 def mock_db():
-    with patch('cortexheal.storage.postgres.get_connection') as mock_conn:
+    with patch('agentfuse.storage.postgres.get_connection') as mock_conn:
         yield mock_conn
 
 def test_save_and_get_run(mock_db):
