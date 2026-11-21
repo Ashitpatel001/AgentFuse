@@ -22,8 +22,8 @@
 </p>
 
 <p align="center">
-  <strong>The 24ms Circuit Breaker for Autonomous AI Agents.</strong><br />
-  Blow the fuse before runaway tool loops burn your budget and corrupt production databases.
+  <strong>The Reliability & Safety Platform for Autonomous AI Agents.</strong><br />
+  Stop runaway tool loops, enforce strict budget firewalls, and self-heal stuck agent runs in real time.
 </p>
 
 <p align="center">
@@ -39,7 +39,7 @@
 
 ## The One-Line Elevator Pitch
 
-> **"AgentFuse: The 24ms Circuit Breaker for Autonomous AI Agents. Stops runaway tool loops before they burn your budget."**
+> **"AgentFuse: The Reliability & Safety Platform for Autonomous AI Agents. Stops runaway tool loops and enforces real-time budget firewalls."**
 
 Like an electrical fuse that blows in milliseconds when current spikes, **AgentFuse** mathematically trips when an autonomous agent enters a repetitive failure loop, halting execution in **$\le 24$ milliseconds** before upstream token costs multiply.
 
