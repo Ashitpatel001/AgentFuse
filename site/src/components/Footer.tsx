@@ -14,7 +14,7 @@ export function Footer() {
               <span className="text-[16px] font-extrabold text-slate-900 tracking-tight">Agent<span className="text-amber-500">Fuse</span></span>
             </div>
             <p className="text-[12px] text-slate-500 leading-relaxed">
-              The 24ms circuit breaker and safety firewall for autonomous AI agents. Stops runaway tool loops before they burn your budget.
+              The Reliability & Safety Platform for Autonomous AI Agents. Stops runaway tool loops and enforces real-time budget firewalls.
             </p>
             <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-700 pt-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

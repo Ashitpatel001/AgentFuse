@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentfuse"
 version = "0.1.0"
-description = "The 24ms Circuit Breaker & Safety Firewall for Autonomous AI Agents"
+description = "The Reliability & Safety Platform for Autonomous AI Agents"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }

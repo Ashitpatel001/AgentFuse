@@ -1,6 +1,6 @@
 """
-AgentFuse: The 24ms Circuit Breaker & Safety Firewall for Autonomous AI Agents.
-Stops runaway tool loops before they burn your budget.
+AgentFuse: The Reliability & Safety Platform for Autonomous AI Agents.
+Stop runaway tool loops, enforce strict budget firewalls, and self-heal stuck agent runs in real time.
 """
 
 from agentfuse.client import AgentFuse

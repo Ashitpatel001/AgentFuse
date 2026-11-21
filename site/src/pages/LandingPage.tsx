@@ -199,7 +199,7 @@ export function LandingPage() {
 
         {/* Hero Headline */}
         <h1 className="text-4xl sm:text-6xl lg:text-[62px] font-extrabold text-slate-900 tracking-tight leading-[1.08] max-w-4xl mx-auto animate-fade-up" style={{ animationDelay: "80ms" }}>
-          Modern Safety & Observability for{" "}
+          The Reliability & Safety Platform for{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700">
             Autonomous AI Agents
           </span>
@@ -207,7 +207,7 @@ export function LandingPage() {
 
         {/* Hero Subtitle */}
         <p className="mt-6 text-[17px] sm:text-[19px] text-slate-600 max-w-2xl mx-auto leading-relaxed animate-fade-up" style={{ animationDelay: "160ms" }}>
-          Every time an enterprise agent gets stuck in a tool loop, it burns $200–$500 in tokens and risks corrupting production databases. AgentFuse is the deterministic circuit breaker that stops loops in <strong>24 milliseconds</strong> — <span className="text-slate-900 font-semibold">zero LLM hallucinations in the safety path.</span>
+          Stop runaway tool loops, enforce strict budget firewalls, and self-heal stuck agent runs in real time — <span className="text-slate-900 font-semibold">zero LLM hallucinations in the safety path.</span>
         </p>
 
         {/* Primary Action Buttons */}
