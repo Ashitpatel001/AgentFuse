@@ -1,5 +1,7 @@
 # Stage 1: Build Frontend Dashboard
 FROM node:20-alpine AS frontend-builder
+WORKDIR /app
+COPY design/ ./design/
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
