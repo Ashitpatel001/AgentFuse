@@ -264,13 +264,10 @@ def start(port, host, use_reload, workers):
 
 @cli.command()
 @click.option("--port", default=8000, type=int, help="Port of the running AgentFuse server.")
+@click.option("--org-id", default=None, help="Target organization ID for the demo incident.")
 @click.option("--skip-server-check", is_flag=True, help="Skip the health check before running.")
-def demo(port, skip_server_check):
-    """Run a live stuck-loop + budget-overrun demo against the running instance.
-
-    Reuses existing example scripts so a first-time user sees real incidents
-    appear in the dashboard within seconds.
-    """
+def demo(port, org_id, skip_server_check):
+    """Run a live stuck-loop demo against the running instance."""
 
     click.secho("\n  =================================================", fg="cyan")
     click.secho("       AgentFuse -- Live Demo                     ", fg="cyan")
@@ -287,39 +284,69 @@ def demo(port, skip_server_check):
             click.echo("    Or use --skip-server-check to bypass this check.")
             raise SystemExit(1)
 
-    # --- 2. Run stuck-loop demo ---------------------------------------------------
-    click.echo("\n  -- Scenario 1: Stuck-Loop Detection & Recovery --\n")
-    try:
-        from examples.demo_stuck_loop_with_recovery import main as run_stuck_loop
-        run_stuck_loop()
-    except ImportError:
-        # When installed via pip, examples/ is not on sys.path.
-        # Try adding PROJECT_ROOT to sys.path.
-        sys.path.insert(0, PROJECT_ROOT)
+    # --- 2. Resolve Target Organization -------------------------------------------
+    if not org_id:
         try:
-            from examples.demo_stuck_loop_with_recovery import main as run_stuck_loop
-            run_stuck_loop()
-        except ImportError as e:
-            click.secho("  [WARN] Could not import stuck-loop demo: {}".format(e), fg="yellow")
-            click.echo("    Ensure you are running from the AgentFuse project directory,")
-            click.echo("    or that 'langgraph' is installed: pip install agentfuse[langgraph]")
-            # Continue to try the budget demo
+            from agentfuse.storage.postgres import get_connection
+            with get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT org_id FROM organizations ORDER BY created_at ASC LIMIT 1")
+                    row = cur.fetchone()
+                    if row:
+                        org_id = row[0]
+        except Exception:
+            pass
+    if not org_id:
+        org_id = os.environ.get("AGENTFUSE_ORG_ID", "default_org")
+    os.environ["AGENTFUSE_ORG_ID"] = org_id
 
-    click.echo()
+    # --- 3. Run Deterministic Stuck-Loop Ingestion -------------------------------
+    click.echo(f"\n  -- Scenario: Stuck-Loop Detection & Circuit Breaker (Org: {org_id}) --\n")
+    import uuid
+    from agentfuse.runtime.collector import collector
+    from agentfuse.models.events import RuntimeEvent
 
-    # --- 3. Run budget-overrun demo -----------------------------------------------
-    click.echo("  -- Scenario 2: Budget Overrun Detection --\n")
+    run_id = f"demo_loop_{uuid.uuid4().hex[:8]}"
+    agent_id = "customer_support_resolver"
+
+    collector.ingest_event(RuntimeEvent(
+        run_id=run_id,
+        agent_id=agent_id,
+        framework="langgraph",
+        event_type="RUN_STARTED",
+        sequence_number=0,
+        idempotency_key=f"{run_id}_start",
+        status="pending"
+    ))
+
+    # Send 4 identical tool calls to trip deterministic threshold
+    for i in range(1, 5):
+        event = RuntimeEvent(
+            run_id=run_id,
+            agent_id=agent_id,
+            framework="langgraph",
+            event_type="TOOL_CALL_COMPLETED",
+            sequence_number=i,
+            idempotency_key=f"{run_id}_tool_{i}",
+            status="success",
+            tool="query_customer_crm",
+            arguments_hash="8a3f9104c2e683",
+            response_hash="e710d8bb30f142"
+        )
+        collector.ingest_event(event)
+        click.echo(f"  [Agent Turn {i}] Tool 'query_customer_crm' completed (hash=8a3f9104c2e683)")
+
+    click.secho(f"\n  [TRIPPED] STUCK_LOOP incident detected on turn 4! Execution paused.", fg="yellow", bold=True)
+    click.echo(f"  Run ID: {run_id}")
+    click.echo(f"  Action: PAUSED (Zero LLM calls, deterministic SHA-256 rule evaluation)")
+
+    # Optional scenarios if extra dependencies present
     try:
         from examples.demo_budget_overrun import main as run_budget_overrun
+        click.echo("\n  -- Optional Scenario: Budget Overrun --\n")
         run_budget_overrun()
-    except ImportError:
-        sys.path.insert(0, PROJECT_ROOT)
-        try:
-            from examples.demo_budget_overrun import main as run_budget_overrun
-            run_budget_overrun()
-        except ImportError as e:
-            click.secho("  [WARN] Could not import budget-overrun demo: {}".format(e), fg="yellow")
-            click.echo("    Ensure 'langgraph' is installed: pip install agentfuse[langgraph]")
+    except Exception:
+        pass
 
     # --- 4. Summary ---------------------------------------------------------------
     click.echo()

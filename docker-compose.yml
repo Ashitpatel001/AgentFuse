@@ -1,3 +1,21 @@
+# ══════════════════════════════════════════════════════════════════════════
+# AgentFuse — Local Evaluation Docker Compose
+# ══════════════════════════════════════════════════════════════════════════
+# Notice: For local evaluation only. Not for production use.
+#
+# Differences from docker-compose.prod.yml:
+# 1. Environment & Build: Builds images locally from source using multi-stage
+#    Dockerfile rather than pulling pinned production container images.
+# 2. Exposure & Network: Binds services strictly to loopback (127.0.0.1) for local
+#    testing (Postgres on 127.0.0.1:5434, Redis on 127.0.0.1:6380, API on 127.0.0.1:8000).
+#    Production delegates all public TLS, routing, and ingress to a fronting Caddy proxy.
+# 3. Storage: Ephemeral container volumes for evaluation. Production requires host
+#    bind-mounts (/opt/agentfuse/data/postgres) with automated backup scripts.
+# 4. Zero Default Access: ALLOW_DEV_TOKENS is explicitly set to false; no default
+#    API key or dev backdoor grants access. First tenant credentials must be
+#    bootstrapped via `agentfuse create-org` at first run.
+# ══════════════════════════════════════════════════════════════════════════
+
 services:
   postgres:
     image: postgres:15
@@ -6,7 +24,7 @@ services:
       POSTGRES_PASSWORD: agentfusepassword
       POSTGRES_DB: agentfuse_db
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U agentfuse -d agentfuse_db"]
       interval: 5s
@@ -16,7 +34,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -28,13 +46,14 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       DATABASE_URL: postgresql://agentfuse:agentfusepassword@postgres:5432/agentfuse_db
       REDIS_URL: redis://redis:6379/0
       PORT: 8000
       AGENTFUSE_WORKERS: 1
       ENVIRONMENT: development
+      ALLOW_DEV_TOKENS: "false"
     depends_on:
       postgres:
         condition: service_healthy
