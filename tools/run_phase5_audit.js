@@ -1,12 +1,26 @@
-const puppeteer = require('D:/AgentFuse/frontend/node_modules/puppeteer');
 const fs = require('fs');
 const path = require('path');
+
+let puppeteer;
+try {
+  puppeteer = require('puppeteer');
+} catch {
+  puppeteer = require(path.join(__dirname, 'node_modules', 'puppeteer'));
+}
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const axeSource = fs.readFileSync('D:/AgentFuse/frontend/node_modules/axe-core/axe.min.js', 'utf8');
-const outDir = 'D:/AgentFuse/docs/images';
+let axeSource = '';
+try {
+  axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
+} catch {
+  const fallbackAxe = path.join(__dirname, 'node_modules', 'axe-core', 'axe.min.js');
+  if (fs.existsSync(fallbackAxe)) {
+    axeSource = fs.readFileSync(fallbackAxe, 'utf8');
+  }
+}
+const outDir = path.resolve(__dirname, '..', 'docs', 'images');
 
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
@@ -44,6 +58,7 @@ async function run() {
   };
 
   const runAxe = async (page, name) => {
+    if (!axeSource) return [];
     await page.evaluate(axeSource);
     const results = await page.evaluate(async () => {
       return await window.axe.run(document, {

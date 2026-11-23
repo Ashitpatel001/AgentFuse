@@ -1,4 +1,14 @@
-const { chromium } = require('D:/AgentFuse/frontend/node_modules/playwright');
+const path = require('path');
+let chromium;
+try {
+  chromium = require('playwright').chromium;
+} catch (e) {
+  try {
+    chromium = require(path.join(__dirname, '..', 'tools', 'node_modules', 'playwright')).chromium;
+  } catch (err) {
+    chromium = require('D:/AgentFuse/frontend/node_modules/playwright').chromium;
+  }
+}
 const assert = require('assert');
 
 async function run() {

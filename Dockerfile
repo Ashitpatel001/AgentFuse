@@ -1,6 +1,5 @@
 # Stage 1: Build Frontend Dashboard
 FROM node:20-alpine AS frontend-builder
-ENV PUPPETEER_SKIP_DOWNLOAD=true
 WORKDIR /app
 COPY design/ ./design/
 WORKDIR /app/frontend
