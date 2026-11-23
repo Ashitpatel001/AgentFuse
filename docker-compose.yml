@@ -34,6 +34,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       PORT: 8000
       AGENTFUSE_WORKERS: 1
+      ENVIRONMENT: development
     depends_on:
       postgres:
         condition: service_healthy
