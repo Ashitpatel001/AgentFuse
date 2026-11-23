@@ -50,6 +50,8 @@ export interface Run {
   protection_mode: string;
   start_time: string;
   last_updated: string;
+  total_tokens?: number;
+  total_cost?: number;
 }
 
 export interface TimelineEntry {

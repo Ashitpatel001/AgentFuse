@@ -35,7 +35,7 @@ def main():
     budget_threshold = 1.00  # $1.00 limit
 
     adapter = LangGraphAdapter(agent_id=agent_id)
-    cortex = AgentFuse(adapter=adapter)
+    af = AgentFuse(adapter=adapter)
 
     # Initial run event
     collector.ingest_event(RuntimeEvent(
@@ -98,7 +98,7 @@ def main():
         return "safety_gate"
 
     builder = StateGraph(BudgetAgentState)
-    builder.add_node("safety_gate", cortex.safety_gate)
+    builder.add_node("safety_gate", af.safety_gate)
     builder.add_node("llm_node", llm_query_node)
     builder.set_entry_point("safety_gate")
     builder.add_edge("safety_gate", "llm_node")

@@ -44,8 +44,8 @@ export function ExportAuditModal({ isOpen, onClose }: ExportAuditModalProps) {
     "w-full bg-bg-base border border-border-default rounded-xl px-3.5 py-2.5 text-[12px] text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-bg-raised border border-border-default rounded-2xl w-full max-w-lg shadow-2xl shadow-black/60 p-6 relative animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="bg-[var(--surface-1)] border border-[var(--border-strong)] rounded-[var(--radius-panel)] w-full max-w-lg shadow-[var(--shadow-dialog)] p-6 relative animate-fade-in">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-bg-elevated transition-colors"

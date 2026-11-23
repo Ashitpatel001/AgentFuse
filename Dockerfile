@@ -1,4 +1,12 @@
-# Use official Python runtime as a parent image
+# Stage 1: Build Frontend Dashboard
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Python Backend Runtime
 FROM python:3.11-slim
 
 # Set environment variables
@@ -20,9 +28,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml README.md ./
 COPY agentfuse/ ./agentfuse/
 COPY scripts/ ./scripts/
-# Migrations are the single source of truth for the schema and MUST ship with
-# the image (the app applies them at startup via init_db()).
 COPY migrations/ ./migrations/
+
+# Copy built frontend assets from Stage 1 into server/static
+COPY --from=frontend-builder /app/frontend/dist/ ./agentfuse/server/static/
 
 # The package installs non-editable (runs from site-packages), so point the
 # migration runner at the copied migrations explicitly.

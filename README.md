@@ -50,7 +50,7 @@
 - [How It Works](#how-it-works)
 - [Architecture](#architecture)
 - [Technology Stack](#technology-stack)
-- [Quick Start (60 Seconds)](#quick-start-60-seconds)
+- [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [1. Clone and Launch Infrastructure](#1-clone-and-launch-infrastructure)
   - [2. Start the Control Plane Server](#2-start-the-control-plane-server)
@@ -246,7 +246,7 @@ graph TB
 
 ---
 
-## Quick Start (60 Seconds)
+## Quick Start
 
 ### Prerequisites
 

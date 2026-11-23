@@ -97,23 +97,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        {/* Subtle background grid */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(var(--color-border-default) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-default) 1px, transparent 1px)`,
-            backgroundSize: "60px 60px",
-          }}
-        />
-        {/* Radial gradient behind card */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent/[0.04] rounded-full blur-[120px] pointer-events-none" />
-
+      <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-4 relative overflow-hidden">
         <div className="w-full max-w-[380px] relative animate-fade-in">
-          <div className="bg-bg-raised/80 backdrop-blur-xl border border-border-default rounded-2xl p-8 shadow-2xl shadow-black/50">
+          <div className="bg-[var(--surface-1)] border border-[var(--border-strong)] rounded-[var(--radius-panel)] p-8 shadow-[var(--shadow-dialog)]">
             {/* Header */}
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-bold">
+              <div className="w-9 h-9 bg-[var(--brand)] rounded-[var(--radius-control)] flex items-center justify-center text-white font-bold">
                 <Zap className="w-5 h-5 fill-current" />
               </div>
               <div>
@@ -194,7 +183,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
                     autoFocus
                     onChange={(e) => setApiKeyInput(e.target.value)}
                     className="w-full bg-bg-base/80 border border-border-default rounded-xl px-3.5 py-2.5 text-sm font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all"
-                    placeholder="ctx_..."
+                    placeholder="af_live_..."
                   />
                 </div>
                 <button
@@ -231,7 +220,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <div className="text-center mt-6">
             <p className="text-[11px] text-text-muted mb-2">Want to see AgentFuse in action?</p>
             <button
-              onClick={() => handleApiKeyLogin("ctx_viewer_public_demo_key_12345")}
+              onClick={() => handleApiKeyLogin("af_live_viewer_public_demo_key_12345")}
               disabled={loading}
               className="inline-flex items-center gap-1.5 text-accent hover:text-accent-hover text-[13px] font-medium transition-colors"
             >

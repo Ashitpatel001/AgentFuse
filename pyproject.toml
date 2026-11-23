@@ -7,7 +7,7 @@ name = "agentfuse"
 version = "0.1.0"
 description = "The Reliability & Safety Platform for Autonomous AI Agents"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "AgentFuse Team", email = "team@agentfuse.dev" }

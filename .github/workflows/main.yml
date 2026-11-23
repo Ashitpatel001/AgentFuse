@@ -62,6 +62,24 @@ jobs:
       run: |
         pytest tests/
         
+    - name: Run API Drift Check
+      run: |
+        python scripts/check_api_drift.py
+        
+    - name: Set up Node.js for Frontend Packaging
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Build Dashboard for Package Inclusion
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+        cd ..
+        mkdir -p agentfuse/server/static
+        cp -r frontend/dist/* agentfuse/server/static/
+
     - name: Test Package Build
       run: |
         python -m pip install build

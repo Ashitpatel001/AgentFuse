@@ -61,14 +61,14 @@ def should_continue(state: AgentState):
 
 # 1. Setup AgentFuse
 adapter = LangGraphAdapter(agent_id="recoverable_agent")
-cortex = AgentFuse(adapter=adapter)
+af = AgentFuse(adapter=adapter)
 
 # Lower threshold for fast testing
 collector.engine.detectors[0].config.repetition_threshold = 4
 
 # 2. Build Graph
 builder = StateGraph(AgentState)
-builder.add_node("safety_gate", cortex.safety_gate)
+builder.add_node("safety_gate", af.safety_gate)
 builder.add_node("tool_node", dummy_tool_node)
 
 builder.set_entry_point("safety_gate")
@@ -80,7 +80,7 @@ graph = builder.compile(checkpointer=checkpointer)
 
 # 3. Execute Graph
 print(f"Starting RECOVERABLE agent run: {run_id}")
-config = {"configurable": {"thread_id": run_id}, "callbacks": [cortex.telemetry]}
+config = {"configurable": {"thread_id": run_id}, "callbacks": [af.telemetry]}
 
 try:
     graph.invoke({"count": 0, "output": ""}, config=config)

@@ -1,0 +1,40 @@
+# AgentFuse
+
+> Deterministic runtime circuit breaker and safety control plane for AI agents.
+
+## Core Thesis
+No LLM decides when your agent stops. AgentFuse enforces safety constraints deterministically during runtime rather than analyzing logs after the fact.
+
+## Key Capabilities
+- Loop detection: Sliding window tracking of identical tool calls via SHA-256 argument and response hashing.
+- Budget firewall: Hard USD spend ceilings per agent run evaluated inline before LLM dispatch.
+- In-process pause: Native LangGraph interrupt() nodes to freeze execution state without process crashes.
+- Human review: Explicit operator approval required to apply recovery plans and resume paused runs.
+- Audit compliance: Immutable PostgreSQL event log with cryptographic state attribution.
+
+## Integration Example (LangGraph)
+```python
+from agentfuse import AgentFuse, LangGraphAdapter
+from langgraph.graph import StateGraph
+
+adapter = LangGraphAdapter(agent_id="support_agent")
+fuse = AgentFuse(adapter=adapter)
+
+builder = StateGraph(dict)
+builder.add_node("safety_gate", fuse.safety_gate)
+builder.set_entry_point("safety_gate")
+builder.add_edge("safety_gate", "agent_worker")
+builder.add_edge("agent_worker", "safety_gate")
+graph = builder.compile()
+```
+
+## Machine API Contract
+- OpenAPI schema available at: /openapi.json
+- Health check: GET /health
+- Telemetry stream: GET /api/stream (SSE)
+- Incidents queue: GET /api/incidents
+- Plan approval: POST /api/incidents/{incident_id}/plan/approve
+
+## Documentation & Repository
+- Repository: https://github.com/Ashitpatel001/AgentFuse
+- License: Apache-2.0

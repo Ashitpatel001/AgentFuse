@@ -33,7 +33,7 @@ def setup_teardown():
         conn.commit()
 
 def seed_org_data(org_id: str) -> str:
-    raw_key = f"ctx_viewer_{org_id}_test"
+    raw_key = f"af_live_viewer_{org_id}_test"
     k_hash = hash_key(raw_key)
     prefix = raw_key[:16] + "..."
     

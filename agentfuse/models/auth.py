@@ -12,7 +12,7 @@ def hash_key(raw_key: str) -> str:
 def generate_raw_key(role: str) -> str:
     """Generate cryptographically secure API key with cosmetic role prefix."""
     token_hex = secrets.token_hex(24)
-    return f"ctx_{role.lower()}_{token_hex}"
+    return f"af_live_{role.lower()}_{token_hex}"
 
 class ApiKey(BaseModel):
     key_id: str = Field(default_factory=lambda: str(uuid.uuid4()))

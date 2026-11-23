@@ -5,6 +5,7 @@ try:
     from agentfuse.recovery.capabilities import SUPPORTED_CAPABILITIES
 except ImportError:
     SUPPORTED_CAPABILITIES = {
+        "agentfuse": ["KEEP_PAUSED", "RESUME", "REVERT_STATE"],
         "cortex": ["KEEP_PAUSED", "RESUME", "REVERT_STATE"],
         "langgraph": ["KEEP_PAUSED", "RESUME"],
         "autogen": ["KEEP_PAUSED"]

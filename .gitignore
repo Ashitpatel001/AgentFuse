@@ -8,6 +8,7 @@
 venv/
 env/
 .venv/
+.clean_venv/
 env.bak/
 venv.bak/
 
@@ -35,6 +36,7 @@ frontend/node_modules/
 site/node_modules/
 frontend/dist/
 site/dist/
+agentfuse/server/static/
 .vite/
 
 # Runtime logs & test output
@@ -59,4 +61,9 @@ caddy_config/
 
 # Local Postgres data dir and secrets (never commit)
 pgdata/
+pgdata*/
+pg_data/
+pg_data*/
 pw.txt
+*.key
+*.pem

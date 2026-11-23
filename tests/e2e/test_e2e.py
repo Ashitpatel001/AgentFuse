@@ -61,14 +61,14 @@ def clean_db():
 def test_full_lifecycle_e2e(clean_db):
     # 1. Developer Setup & Initialization
     adapter = LangGraphAdapter(agent_id="e2e_agent")
-    cortex = AgentFuse(adapter=adapter)
+    af = AgentFuse(adapter=adapter)
     
     # Configure safety threshold lower for test speed
     from agentfuse.runtime.collector import collector
     collector.engine.detectors[0].config.repetition_threshold = 4
     
     builder = StateGraph(AgentState)
-    builder.add_node("safety_gate", cortex.safety_gate)
+    builder.add_node("safety_gate", af.safety_gate)
     builder.add_node("agent_node", agent_node)
     builder.set_entry_point("safety_gate")
     builder.add_edge("safety_gate", "agent_node")
@@ -79,7 +79,7 @@ def test_full_lifecycle_e2e(clean_db):
 
     # 2. Agent Starts & hits deterministic Stuck Loop
     run_id = "e2e_run_123"
-    config = {"configurable": {"thread_id": run_id}, "callbacks": [cortex.telemetry]}
+    config = {"configurable": {"thread_id": run_id}, "callbacks": [af.telemetry]}
     
     # Invoke the graph. It should run, loop, get detected, and PAUSE at the safety gate.
     graph.invoke({"input": "start", "count": 0}, config=config)
@@ -145,13 +145,13 @@ def test_full_lifecycle_unrecoverable_loop_e2e(clean_db):
     
     # 1. Developer Setup
     adapter = LangGraphAdapter(agent_id="unrecov_agent")
-    cortex = AgentFuse(adapter=adapter)
+    af = AgentFuse(adapter=adapter)
     
     from agentfuse.runtime.collector import collector
     collector.engine.detectors[0].config.repetition_threshold = 4
     
     builder = StateGraph(AgentState)
-    builder.add_node("safety_gate", cortex.safety_gate)
+    builder.add_node("safety_gate", af.safety_gate)
     builder.add_node("agent_node", agent_node)
     builder.set_entry_point("safety_gate")
     builder.add_edge("safety_gate", "agent_node")
@@ -161,7 +161,7 @@ def test_full_lifecycle_unrecoverable_loop_e2e(clean_db):
     graph = builder.compile(checkpointer=checkpointer)
     
     run_id = "e2e_unrecov_456"
-    config = {"configurable": {"thread_id": run_id}, "callbacks": [cortex.telemetry]}
+    config = {"configurable": {"thread_id": run_id}, "callbacks": [af.telemetry]}
     
     # 2. Agent Starts & hits Stuck Loop
     graph.invoke({"input": "start", "count": 0, "run_id": run_id}, config=config)

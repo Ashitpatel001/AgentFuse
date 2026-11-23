@@ -13,22 +13,23 @@ export function useSSE() {
 
     const connect = async () => {
       const apiKey = getApiKey();
-      if (!apiKey) {
-        queryClient.setQueryData(['sse_status'], 'disconnected');
-        return;
-      }
 
       try {
-        queryClient.setQueryData(['sse_status'], 'connecting');
+        queryClient.setQueryData(['sse_status'], 'reconnecting');
         
-        // Workaround: Native EventSource doesn't support headers.
-        // Since backend requires X-API-Key header, we use native fetch() + ReadableStream.
+        const headers: Record<string, string> = {};
+        if (apiKey) {
+          headers['X-API-Key'] = apiKey;
+        }
+
         const response = await fetch('/api/stream', {
-          headers: { 'X-API-Key': apiKey },
+          headers,
+          credentials: 'include',
           signal: abortController.signal
         });
 
         if (!response.ok) {
+          queryClient.setQueryData(['sse_status'], 'offline');
           throw new Error('SSE connection failed');
         }
 
@@ -83,26 +84,27 @@ export function useSSE() {
     };
 
     const handleEvent = (event: string, data: Record<string, unknown>) => {
+      // Record last event with timestamp to drive row-level flashing
+      queryClient.setQueryData(['sse_last_event'], { event, data, timestamp: Date.now() });
+
       if (event === 'incident_created') {
-        // Invalidate incidents list, or prepend optimistically
         queryClient.invalidateQueries({ queryKey: ['incidents'] });
         queryClient.invalidateQueries({ queryKey: ['fleet'] });
+        queryClient.invalidateQueries({ queryKey: ['metrics'] });
         queryClient.invalidateQueries({ queryKey: ['timeline', String(data.run_id)] });
       } else if (event === 'run_status_changed') {
-        // Refetch specifically
         queryClient.invalidateQueries({ queryKey: ['runs'] });
         queryClient.invalidateQueries({ queryKey: ['fleet'] });
+        queryClient.invalidateQueries({ queryKey: ['metrics'] });
         queryClient.invalidateQueries({ queryKey: ['run', String(data.run_id)] });
         queryClient.invalidateQueries({ queryKey: ['timeline', String(data.run_id)] });
-        
-        // Gap requirement: If we are on incident detail for this run, we must refetch the incident
-        // since run_status_changed doesn't contain incident_id.
-        // We will just invalidate all incidents that might belong to this run.
         queryClient.invalidateQueries({ queryKey: ['incidents'] }); 
         queryClient.invalidateQueries({ queryKey: ['incident'] });
       } else if (event === 'run_resumed' || event === 'plan_approved' || event === 'plan_rejected') {
         queryClient.invalidateQueries({ queryKey: ['incidents'] });
         queryClient.invalidateQueries({ queryKey: ['incident'] });
+        queryClient.invalidateQueries({ queryKey: ['fleet'] });
+        queryClient.invalidateQueries({ queryKey: ['metrics'] });
         queryClient.invalidateQueries({ queryKey: ['plan'] });
         queryClient.invalidateQueries({ queryKey: ['timeline'] });
       }

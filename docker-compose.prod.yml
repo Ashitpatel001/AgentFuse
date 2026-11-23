@@ -67,6 +67,8 @@ services:
       DATABASE_URL: postgresql://agentfuse:${POSTGRES_PASSWORD}@postgres:5432/agentfuse_db
       # Redis on the compose network → cross-worker SSE fan-out + rate limiting.
       REDIS_URL: redis://redis:6379/0
+      # Set workers to 1: gateway state and cost tracking are currently in-process.
+      AGENTFUSE_WORKERS: 1
     ports:
       - "127.0.0.1:8000:8000"
     networks:

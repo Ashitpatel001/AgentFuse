@@ -46,7 +46,10 @@ class Settings(BaseSettings):
     RETENTION_DAYS: int = 90
     
     # Rate Limiting
-    API_RATE_LIMIT_PER_MIN: int = 60
+    API_RATE_LIMIT_PER_MIN: int = 600
+    
+    # Gateway (/v1/chat/completions proxy)
+    GATEWAY_ENABLED: bool = False
     
     model_config = SettingsConfigDict(
         env_file=".env",

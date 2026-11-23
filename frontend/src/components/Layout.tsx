@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Activity, ShieldAlert, LogOut, Download, Server, KeyRound, Users, Layers, ExternalLink, Zap } from "lucide-react";
+import { Activity, ShieldAlert, LogOut, Download, Server, KeyRound, Users, Layers, ExternalLink, Zap, Settings, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useSSE } from "../sse";
 import { useAuth } from "./AuthGate";
 import { ExportAuditModal } from "./ExportAuditModal";
+import { CommandPalette } from "./CommandPalette";
+import { StatusDot, Kbd, TooltipProvider } from "./ui";
 import { api } from "../api";
 import { cn } from "../utils";
 
@@ -13,6 +15,7 @@ const navItems = [
   { to: "/queues", icon: Layers, label: "Agent Queues", hint: "Q" },
   { to: "/runs", icon: Activity, label: "Executions", hint: "E" },
   { to: "/fleet", icon: Server, label: "Fleet Status", hint: "F" },
+  { to: "/settings", icon: Settings, label: "Settings", hint: "S" },
 ];
 
 const adminItems = [
@@ -74,6 +77,40 @@ export function Layout() {
   useSSE();
   const { user, logout } = useAuth();
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore command-palette shortcut if focus is in an input, textarea, select, contenteditable, or if dialog is open
+      const target = e.target as HTMLElement | null;
+      if (
+        target && (
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable ||
+          Boolean(target.closest("input, textarea, select, [contenteditable='true']"))
+        )
+      ) {
+        return;
+      }
+
+      if (
+        isExportOpen ||
+        isPaletteOpen ||
+        Boolean(document.querySelector('[role="dialog"], [data-radix-dialog-content], dialog[open]'))
+      ) {
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isExportOpen, isPaletteOpen]);
   
   const { data: sseStatus = "disconnected" } = useQuery<string>({
     queryKey: ["sse_status"],
@@ -93,7 +130,8 @@ export function Layout() {
   const openCount = incidentsData?.data?.filter((i) => i.status === "OPEN").length || 0;
 
   return (
-    <div className="flex h-screen bg-bg-base text-text-secondary font-sans overflow-hidden">
+    <TooltipProvider delayDuration={200}>
+      <div className="flex h-screen bg-bg-base text-text-secondary font-sans overflow-hidden">
       <aside className="w-[220px] flex flex-col border-r border-border-subtle bg-bg-raised/40">
         {/* Logo */}
         <div className="h-14 px-4 flex items-center gap-2.5 border-b border-border-subtle/40">
@@ -147,21 +185,21 @@ export function Layout() {
 
         {/* Footer */}
         <div className="px-3 py-3 border-t border-border-subtle space-y-2.5 bg-bg-raised/60">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Event Bus</span>
-            <div className="flex items-center gap-1.5">
-              <div
-                className={cn(
-                  "w-1.5 h-1.5 rounded-full",
+          <div className="flex items-center justify-between px-1" aria-live="polite">
+            <span className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Connection</span>
+            <div className="flex items-center gap-1.5 font-mono text-[11px]">
+              <StatusDot
+                status={
                   sseStatus === "connected"
-                    ? "bg-emerald-400 shadow-[0_0_6px_rgba(34,197,94,0.5)]"
+                    ? "ok"
                     : sseStatus === "reconnecting"
-                    ? "bg-amber-400 animate-pulse"
-                    : "bg-red-400/60"
-                )}
+                    ? "warning"
+                    : "critical"
+                }
+                pulse={sseStatus === "reconnecting"}
               />
-              <span className="text-[10px] font-mono text-text-muted">
-                {sseStatus}
+              <span className="text-[10px] font-mono text-text-muted capitalize">
+                {sseStatus === "connected" ? "live" : sseStatus === "reconnecting" ? "reconnecting" : "offline"}
               </span>
             </div>
           </div>
@@ -192,8 +230,8 @@ export function Layout() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Enterprise Global Header (Datadog / Linear style) */}
-        <header className="h-14 border-b border-border-subtle bg-bg-raised/70 backdrop-blur px-6 flex items-center justify-between flex-shrink-0">
+        {/* Enterprise Global Header */}
+        <header className="h-14 border-b border-border-subtle bg-bg-raised px-6 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-bg-overlay border border-border-subtle text-[11px] font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -209,9 +247,19 @@ export function Layout() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsPaletteOpen(true)}
+              className="hidden sm:inline-flex items-center gap-2 px-2.5 py-1 rounded-[var(--radius-control)] bg-[var(--surface-2)] border border-[var(--border)] text-[12px] text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+            >
+              <Search className="w-3.5 h-3.5" strokeWidth={1.5} />
+              <span>Search or jump...</span>
+              <Kbd>Ctrl+K</Kbd>
+            </button>
+
             {openCount > 0 ? (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-[11px] font-mono font-bold animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-950 border border-red-700 text-white text-[11px] font-mono font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                 {openCount} ACTION REQUIRED
               </div>
             ) : (
@@ -243,6 +291,11 @@ export function Layout() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
       />
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+      />
     </div>
+    </TooltipProvider>
   );
 }

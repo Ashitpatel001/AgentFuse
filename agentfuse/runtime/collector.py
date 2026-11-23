@@ -35,14 +35,24 @@ class RuntimeCollector:
         self._queue = queue.Queue(maxsize=self.max_queue_size)
         
         self._shutdown_event = threading.Event()
-        self._worker_thread = threading.Thread(target=self._process_queue, daemon=True)
-        self._worker_thread.start()
+        self._thread_lock = threading.Lock()
+        self._worker_thread = None
+
+    def start_worker(self):
+        """Lazily starts background queue worker thread if not already running."""
+        if self._worker_thread is None or not self._worker_thread.is_alive():
+            with self._thread_lock:
+                if self._worker_thread is None or not self._worker_thread.is_alive():
+                    self._shutdown_event.clear()
+                    self._worker_thread = threading.Thread(target=self._process_queue, daemon=True)
+                    self._worker_thread.start()
 
     def ingest_event(self, event: RuntimeEvent):
         """
         Receives an event from the SDK. 
         Enqueues it in a non-blocking manner. If full, drops it.
         """
+        self.start_worker()
         metrics.events_received_total.inc()
         try:
             self._queue.put_nowait(event)
@@ -169,7 +179,7 @@ class RuntimeCollector:
 
     def shutdown(self, timeout=None):
         self._shutdown_event.set()
-        if self._worker_thread.is_alive():
+        if self._worker_thread is not None and self._worker_thread.is_alive():
             self._worker_thread.join(timeout=timeout)
 
 # Global instance for the SDK to use

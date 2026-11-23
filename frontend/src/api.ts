@@ -119,6 +119,22 @@ export const api = {
   getFleet: (): Promise<any[]> => 
     fetchWithAuth(`/api/fleet`),
 
+  getWebhooks: (): Promise<any[]> => 
+    fetchWithAuth(`/api/webhooks`),
+
+  createWebhook: (data: { target_type: string; url: string; secret_token?: string; min_severity?: string; escalation_timeout_minutes?: number }): Promise<any> => 
+    fetchWithAuth(`/api/webhooks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  deleteWebhook: (webhookId: string): Promise<{ status: string }> => 
+    fetchWithAuth(`/api/webhooks/${webhookId}`, { method: 'DELETE' }),
+
+  getNotifications: (limit = 50): Promise<any[]> => 
+    fetchWithAuth(`/api/notifications?limit=${limit}`),
+
   getPatterns: (): Promise<{ data: any[] }> =>
     fetchWithAuth(`/api/patterns`),
     

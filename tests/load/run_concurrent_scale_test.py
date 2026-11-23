@@ -79,7 +79,7 @@ def run_single_langgraph_agent(agent_index: int, collector: RuntimeCollector, fa
     
     # 1. Initialize LangGraph Adapter & AgentFuse SafetyGate
     adapter = LangGraphAdapter(agent_id=agent_id)
-    cortex = AgentFuse(adapter=adapter)
+    af = AgentFuse(adapter=adapter)
 
     # 2. Register Run as ACTIVE in Storage
     save_run(AgentRun(
@@ -161,7 +161,7 @@ def run_single_langgraph_agent(agent_index: int, collector: RuntimeCollector, fa
 
     # Build and compile real LangGraph StateGraph with SafetyGate
     builder = StateGraph(WorkerState)
-    builder.add_node("safety_gate", cortex.safety_gate)
+    builder.add_node("safety_gate", af.safety_gate)
     builder.add_node("worker", worker_node)
     builder.set_entry_point("safety_gate")
     builder.add_edge("safety_gate", "worker")

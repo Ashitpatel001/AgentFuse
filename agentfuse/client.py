@@ -28,14 +28,14 @@ class AgentFuse:
         
         For LangGraph: 
         This is a no-op structurally, because LangGraph requires you to add
-        `cortex.safety_gate` to your StateGraph manually.
-        However, you can configure your graph callbacks to use `cortex.telemetry`.
+        `agentfuse.safety_gate` to your StateGraph manually.
+        However, you can configure your graph callbacks to use `agentfuse.telemetry`.
         
         For AutoGen:
         This injects the before_send hooks automatically into the agent.
         """
         if self.adapter.framework_name == "LangGraph":
-            logger.info("LangGraph detected. Please ensure `cortex.safety_gate` is added as a node in your StateGraph, and `cortex.telemetry` is passed as a callback.")
+            logger.info("LangGraph detected. Please ensure `agentfuse.safety_gate` is added as a node in your StateGraph, and `agentfuse.telemetry` is passed as a callback.")
             return agent_graph
             
         elif self.adapter.framework_name == "AutoGen":

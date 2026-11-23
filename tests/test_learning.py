@@ -33,7 +33,7 @@ def dummy_event():
         event_type="RUN_FAILED",
         status="failed",
         sequence_number=1,
-        framework="cortex",
+        framework="agentfuse",
         idempotency_key="key",
         tool="SearchTool",
         arguments_hash="hash_args",
@@ -61,7 +61,7 @@ def test_pattern_engine_create_new(mock_save, mock_get, dummy_incident, dummy_ev
 def test_pattern_engine_update_existing(mock_save, mock_get, dummy_incident, dummy_event):
     existing = PatternRecord(
         pattern_id="p-1",
-        framework="cortex",
+        framework="agentfuse",
         agent_id="agent-456",
         failure_type="STUCK_LOOP",
         org_id="test_org",
@@ -109,7 +109,7 @@ def test_trust_engine_calculate_trust(mock_get_outcomes):
     assert keep_paused_stats.risk_level == "UNKNOWN"
 
 @patch('agentfuse.learning.trust.get_outcomes_for_pattern')
-@patch('agentfuse.learning.ranking.SUPPORTED_CAPABILITIES', {"cortex": ["RESUME"]})
+@patch('agentfuse.learning.ranking.SUPPORTED_CAPABILITIES', {"agentfuse": ["RESUME"]})
 def test_ranking_engine(mock_get_outcomes):
     mock_get_outcomes.return_value = [
         RecoveryOutcome(run_id="r1", incident_id="i1", pattern_id="p1", action_type="RESUME", execution_result="EXECUTED", verification_result="VERIFIED_SUCCESS"),
@@ -122,7 +122,7 @@ def test_ranking_engine(mock_get_outcomes):
     
     pattern = PatternRecord(
         pattern_id="p1",
-        framework="cortex",
+        framework="agentfuse",
         agent_id="agent-456",
         failure_type="STUCK_LOOP",
         org_id="test_org",

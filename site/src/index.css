@@ -1,69 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "@fontsource-variable/inter";
+@import "@fontsource/jetbrains-mono";
+@import "../../design/tokens.css";
 @import "tailwindcss";
 
-@theme {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --color-datadog-purple: #6320ee;
-  --color-datadog-indigo: #4f46e5;
-  --color-datadog-dark: #1e1b4b;
-  --color-blue-600: #2563eb;
-  --color-blue-700: #1d4ed8;
-}
-
 @layer base {
-  body {
-    font-family: var(--font-sans);
-    background-color: #ffffff;
-    color: #0f172a;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    border-color: var(--border);
+    box-sizing: border-box;
   }
 
   ::selection {
-    background-color: rgba(99, 102, 241, 0.16);
-    color: #312e81;
+    background-color: var(--brand-selection);
+    color: var(--text);
   }
-}
 
-.gradient-datadog-hero {
-  background: radial-gradient(ellipse 90% 55% at 50% -5%, rgba(99, 102, 241, 0.09) 0%, rgba(139, 92, 246, 0.04) 50%, rgba(255, 255, 255, 0) 100%);
-}
+  *:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+  }
 
-.grid-bg-light {
-  background-size: 36px 36px;
-  background-image:
-    linear-gradient(to right, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
-}
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-md);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+  }
 
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+  code, kbd, samp, pre {
+    font-family: var(--font-mono);
+  }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.animate-fade-up {
-  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.animate-fade-in-site {
-  animation: fade-in 0.4s ease-out both;
-}
-
-.card-datadog {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.card-datadog:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
+  .tabular-nums,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
 }

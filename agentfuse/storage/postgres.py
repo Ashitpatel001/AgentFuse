@@ -566,7 +566,7 @@ def delete_webhook_config(webhook_id: str, org_id: str) -> bool:
 
 def save_notification_record(record: NotificationRecord) -> NotificationRecord:
     data = record.model_dump()
-    data["payload"] = Json(data["payload"])
+    data["payload"] = Json(data["payload"], dumps=lambda obj: json.dumps(obj, ensure_ascii=True))
     with get_connection() as conn:
         with conn.cursor() as cur:
             try:

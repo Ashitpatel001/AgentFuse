@@ -1,4 +1,21 @@
 import pytest
+import psycopg2
+from agentfuse.config import settings
+
+@pytest.fixture(scope="session", autouse=True)
+def check_postgres_connection():
+    """Fail fast with a clear message if PostgreSQL is unreachable."""
+    db_url = settings.DATABASE_URL
+    try:
+        conn = psycopg2.connect(db_url, connect_timeout=3)
+        conn.close()
+    except Exception as exc:
+        pytest.exit(
+            f"\n[FATAL] PostgreSQL is unreachable at {db_url} (connect_timeout=3s).\n"
+            f"Error: {exc}\n"
+            f"Please ensure PostgreSQL is running before executing tests.\n",
+            returncode=1
+        )
 
 @pytest.fixture(autouse=True)
 def reset_collector_state():

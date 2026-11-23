@@ -26,17 +26,8 @@ export function AcceptInvite() {
 
   return (
     <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(var(--color-border-default) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-default) 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
-        }}
-      />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent/[0.04] rounded-full blur-[120px] pointer-events-none" />
-
       <div className="w-full max-w-[380px] relative animate-fade-in">
-        <div className="bg-bg-raised/80 backdrop-blur-xl border border-border-default rounded-2xl p-8 shadow-2xl shadow-black/50">
+        <div className="bg-bg-raised border border-border-default rounded-xl p-8 shadow-md">
           <div className="flex items-center gap-3 mb-7">
             <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center shadow-lg shadow-accent/20">
               <Activity className="w-4 h-4 text-white" />

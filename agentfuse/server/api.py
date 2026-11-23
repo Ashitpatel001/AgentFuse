@@ -667,12 +667,15 @@ def api_get_fleet(user: User = Depends(get_current_user)):
                 WITH RankedRuns AS (
                     SELECT 
                         r.run_id, r.agent_id, r.status, r.start_time, r.end_time, r.protection_mode, r.org_id,
+                        r.framework, r.total_cost,
                         ROW_NUMBER() OVER(PARTITION BY r.agent_id ORDER BY COALESCE(r.end_time, r.start_time) DESC) as rn
                     FROM runs r
                     WHERE r.org_id = %s
                 )
                 SELECT 
                     rr.run_id, rr.agent_id, rr.status, rr.start_time, rr.end_time, rr.protection_mode,
+                    COALESCE(rr.framework, 'custom') as framework,
+                    COALESCE(rr.total_cost, 0.0) as total_cost,
                     (SELECT COUNT(*) FROM events e WHERE e.run_id = rr.run_id) as event_count
                 FROM RankedRuns rr
                 WHERE rr.rn = 1
@@ -683,6 +686,8 @@ def api_get_fleet(user: User = Depends(get_current_user)):
             for r in fleet_data:
                 r['start_time'] = r['start_time'].isoformat() if r['start_time'] else None
                 r['end_time'] = r['end_time'].isoformat() if r['end_time'] else None
+                r['total_cost'] = float(r.get('total_cost') or 0.0)
+                r['framework'] = r.get('framework') or 'custom'
             return fleet_data
 
 

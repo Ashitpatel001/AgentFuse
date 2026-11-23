@@ -67,7 +67,7 @@ def test_alert_dispatcher_severity_filtering():
 
     # Create dummy mock webhook
     webhook = save_webhook_config(WebhookConfig(
-        org_id="test_org",
+        org_id="default_org",
         target_type="slack",
         url="http://mock-slack.local/webhook",
         min_severity="HIGH"
@@ -283,3 +283,35 @@ def test_notification_audit_log_endpoint():
     res = client.get("/api/notifications", headers=op_headers)
     assert res.status_code == 200
     assert isinstance(res.json(), list)
+
+def test_notification_payload_ensure_ascii_storage_and_retrieval():
+    """Verify notification payloads with Unicode emojis are safely stored with ensure_ascii=True."""
+    from agentfuse.models.alerting import NotificationRecord
+    from agentfuse.storage.postgres import save_notification_record, get_notifications_for_incident
+    import uuid
+    from datetime import datetime, timezone
+
+    inc_id = str(uuid.uuid4())
+    record = NotificationRecord(
+        notification_id=str(uuid.uuid4()),
+        org_id="default_org",
+        incident_id=inc_id,
+        run_id="run_emoji_audit",
+        notification_type="INITIAL_ALERT",
+        target_url="https://hooks.slack.com/services/test",
+        payload={
+            "text": "🚨 Danger! ⚠️ Agent stuck in infinite loop 🔥",
+            "unicode_symbol": "日本語テスト \u26a0\ufe0f \ud83d\udd25"
+        },
+        status="SUCCESS",
+        status_code=200,
+        response_body="ok",
+        sent_at=datetime.now(timezone.utc)
+    )
+    saved = save_notification_record(record)
+    assert saved is not None
+
+    records = get_notifications_for_incident(inc_id)
+    assert len(records) >= 1
+    retrieved = records[0]
+    assert "🚨" in retrieved.payload["text"] or "\\ud83d\\udea8" in str(retrieved.payload)

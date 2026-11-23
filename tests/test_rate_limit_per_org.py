@@ -15,7 +15,7 @@ from agentfuse.models.auth import hash_key
 
 
 def _seed_key(org_id, role="VIEWER"):
-    raw = f"ctx_{role.lower()}_{org_id}_{uuid.uuid4().hex[:6]}"
+    raw = f"af_live_{role.lower()}_{org_id}_{uuid.uuid4().hex[:6]}"
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(

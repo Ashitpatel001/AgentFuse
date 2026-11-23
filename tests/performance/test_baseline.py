@@ -44,17 +44,17 @@ def test_baseline_vs_agentfuse():
     
     # 2. Measure AgentFuse
     collector = RuntimeCollector()
-    cortex_latency = agentfuse_workload(num_iterations, collector)
+    agentfuse_latency = agentfuse_workload(num_iterations, collector)
     collector.shutdown()
     
     # Calculate Overhead
-    absolute_overhead = cortex_latency - baseline_latency
+    absolute_overhead = agentfuse_latency - baseline_latency
     percentage_overhead = (absolute_overhead / baseline_latency) * 100
     
     print(f"\n--- Baseline vs AgentFuse Overhead ---")
     print(f"Iterations: {num_iterations} (10ms simulated LLM)")
     print(f"Baseline Latency: {baseline_latency:.4f}s")
-    print(f"AgentFuse Latency: {cortex_latency:.4f}s")
+    print(f"AgentFuse Latency: {agentfuse_latency:.4f}s")
     print(f"Absolute Overhead: {absolute_overhead:.4f}s")
     print(f"Percentage Overhead: {percentage_overhead:.2f}%")
     

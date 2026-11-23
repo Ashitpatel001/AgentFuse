@@ -5,9 +5,17 @@ Populates the PostgreSQL database with realistic, high-fidelity enterprise agent
 safety incidents, recovery plans, audit event verification records, API keys, and webhooks.
 """
 
+import os
+import sys
+# Ensure project root is in sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import uuid
 import time
+import secrets
+import argparse
 from datetime import datetime, timezone, timedelta
+
+from agentfuse.config import settings
 
 from agentfuse.storage.postgres import (
     get_connection, init_db, save_run, save_incident, save_audit_event,
@@ -25,10 +33,23 @@ from agentfuse.models.auth import (
 )
 from agentfuse.models.alerting import WebhookConfig, NotificationRecord
 
-def reseed():
+def reseed(confirm_destroy: bool = False):
     print("=" * 75)
     print("  RESEEDING AGENTFUSE ENTERPRISE DEMO DATA")
     print("=" * 75)
+
+    current_env = os.environ.get("ENVIRONMENT", settings.ENVIRONMENT)
+    if current_env != "development":
+        raise RuntimeError(
+            f"REFUSED: reseed_demo_data is only permitted when ENVIRONMENT=development (current: '{current_env}'). "
+            "Database truncation is blocked to protect non-development environments."
+        )
+
+    if not confirm_destroy:
+        raise ValueError(
+            "REFUSED: Destructive database wipe requires explicit confirmation. "
+            "Pass --confirm-destroy or reseed(confirm_destroy=True) to proceed."
+        )
 
     init_db()
 
@@ -46,38 +67,48 @@ def reseed():
             conn.commit()
     print("         All tables truncated cleanly.")
 
-    # 1.1 Seed Organizations and Default Users
+    # 1.1 Seed Organizations and Default Users with Randomly Generated Passwords
     print("\n[Step 1.1] Seeding Organization and Human Admin Accounts...")
     org = create_organization(Organization(
         org_id="default_org",
         name="Fleet Production Corp",
         created_at=datetime.now(timezone.utc)
     ))
+
+    admin_password = secrets.token_urlsafe(16)
+    demo_password = secrets.token_urlsafe(16)
+
     admin_user = create_user_account(UserAccount(
         org_id="default_org",
         email="admin@agentfuse.com",
-        password_hash=hash_password("admin123"),
+        password_hash=hash_password(admin_password),
         role="ADMIN",
         status="ACTIVE"
     ))
     demo_user = create_user_account(UserAccount(
         org_id="default_org",
         email="demo@agentfuse.com",
-        password_hash=hash_password("demo123"),
+        password_hash=hash_password(demo_password),
         role="VIEWER",
         status="ACTIVE"
     ))
     print(f"         Seeded Org: {org.name} ({org.org_id})")
-    print(f"         Seeded Admin: {admin_user.email} (pwd: admin123)")
-    print(f"         Seeded Demo:  {demo_user.email} (pwd: demo123)")
+    print(f"         Seeded Admin: {admin_user.email} (PASSWORD: {admin_password})")
+    print(f"         Seeded Demo:  {demo_user.email} (PASSWORD: {demo_password})")
+    print("         [!] PASSWORDS GENERATED RANDOMLY AND PRINTED ONCE. STORE THEM SECURELY.")
 
     # 2. Seed Multi-Tenant API Keys
     print("\n[Step 2] Seeding Tenant API Keys...")
     keys = [
-        ("ctx_admin_prod_corp_001", "Enterprise Root Admin", "ADMIN", "default_org"),
-        ("ctx_operator_sre_team_002", "SRE On-Call Operator", "OPERATOR", "default_org"),
-        ("ctx_viewer_security_audit_003", "SOC2 Auditor Key", "VIEWER", "default_org"),
-        ("ctx_viewer_public_demo_key_12345", "Public Sandbox Demo Key", "VIEWER", "default_org")
+        ("af_live_admin_prod_corp_001", "Enterprise Root Admin", "ADMIN", "default_org"),
+        ("af_live_operator_sre_team_002", "SRE On-Call Operator", "OPERATOR", "default_org"),
+        ("af_live_viewer_security_audit_003", "SOC2 Auditor Key", "VIEWER", "default_org"),
+        ("af_live_viewer_public_demo_key_12345", "Public Sandbox Demo Key", "VIEWER", "default_org"),
+        # Backward-compatibility: legacy ctx_ keys
+        ("ctx_admin_prod_corp_001", "Legacy Root Admin", "ADMIN", "default_org"),
+        ("ctx_operator_sre_team_002", "Legacy SRE Operator", "OPERATOR", "default_org"),
+        ("ctx_viewer_security_audit_003", "Legacy SOC2 Auditor Key", "VIEWER", "default_org"),
+        ("ctx_viewer_public_demo_key_12345", "Legacy Sandbox Demo Key", "VIEWER", "default_org")
     ]
     for raw_k, name, role, org_id in keys:
         save_api_key(ApiKey(
@@ -391,7 +422,7 @@ def reseed():
                 run_id=s["run_id"],
                 notification_type="INITIAL_ALERT",
                 target_url=webhook.url,
-                payload={"text": f"🚨 Safety Alert: BUDGET_EXCEEDED for {s['agent_id']}"},
+                payload={"text": f"[ALERT] Safety Alert: BUDGET_EXCEEDED for {s['agent_id']}"},
                 status="SUCCESS",
                 status_code=200,
                 response_body="ok",
@@ -401,8 +432,18 @@ def reseed():
     print(f"         Seeded {len(scenarios)} Agent Runs with Incidents, Plans & Audits.")
 
     print("\n" + "=" * 75)
-    print("  DATABASE RESEEDING COMPLETE — HIGH REALISM ENTERPRISE DATASET")
+    print("  DATABASE RESEEDING COMPLETE -- HIGH REALISM ENTERPRISE DATASET")
     print("=" * 75)
 
 if __name__ == "__main__":
-    reseed()
+    parser = argparse.ArgumentParser(description="AgentFuse Master Demo Data Reseeder")
+    parser.add_argument(
+        "--confirm-destroy",
+        action="store_true",
+        help="Explicitly confirm destructive truncation of database tables."
+    )
+    args = parser.parse_args()
+    if not args.confirm_destroy:
+        print("[ERROR] Destructive operation aborted: you must pass --confirm-destroy to reseed demo data.", file=sys.stderr)
+        sys.exit(1)
+    reseed(confirm_destroy=True)

@@ -6,10 +6,8 @@ import { IncidentQueue } from "./pages/IncidentQueue";
 import { AgentQueuesMonitoring } from "./pages/AgentQueuesMonitoring";
 import { RunsList } from "./pages/RunsList";
 import { RunDetail } from "./pages/RunDetail";
-import { IncidentDetail } from "./pages/IncidentDetail";
 import { FleetView } from "./pages/FleetView";
-import { ApiKeysView } from "./pages/ApiKeysView";
-import { TeamView } from "./pages/TeamView";
+import { SettingsView } from "./pages/SettingsView";
 import { AcceptInvite } from "./pages/AcceptInvite";
 
 const queryClient = new QueryClient();
@@ -20,14 +18,16 @@ function ProtectedApp() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<IncidentQueue />} />
+          <Route path="incidents" element={<IncidentQueue />} />
+          <Route path="incidents/:id" element={<IncidentQueue />} />
           <Route path="queues" element={<AgentQueuesMonitoring />} />
           <Route path="monitoring" element={<Navigate to="/queues" replace />} />
           <Route path="fleet" element={<FleetView />} />
           <Route path="runs" element={<RunsList />} />
           <Route path="runs/:id" element={<RunDetail />} />
-          <Route path="incidents/:id" element={<IncidentDetail />} />
-          <Route path="team" element={<TeamView />} />
-          <Route path="keys" element={<ApiKeysView />} />
+          <Route path="settings" element={<SettingsView />} />
+          <Route path="team" element={<Navigate to="/settings?tab=team" replace />} />
+          <Route path="keys" element={<Navigate to="/settings?tab=keys" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

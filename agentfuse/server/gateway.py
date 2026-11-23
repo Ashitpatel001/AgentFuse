@@ -55,6 +55,13 @@ async def chat_completions_proxy(request: Request):
     5. Forwards to upstream OpenAI/Anthropic using the caller's BYOK credentials.
     6. Emits real-time telemetry into AgentFuse dashboard via SSE.
     """
+    from agentfuse.config import settings
+    if not settings.GATEWAY_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Gateway disabled. Set GATEWAY_ENABLED=true to enable."
+        )
+
     _t0 = time.perf_counter()
     
     # 1. Parse Headers & BYOK (Bring Your Own Key)
@@ -63,7 +70,7 @@ async def chat_completions_proxy(request: Request):
     if auth_header.startswith("Bearer "):
         openai_key = auth_header[7:].strip()
     
-    cortex_key = request.headers.get("X-AgentFuse-Key") or request.headers.get("X-API-Key") or "dev-admin-key"
+    agentfuse_key = request.headers.get("X-AgentFuse-Key") or request.headers.get("X-API-Key")
     agent_id = request.headers.get("X-Agent-ID") or "openai-proxy-agent"
     run_id = request.headers.get("X-Run-ID")
     
@@ -193,7 +200,7 @@ async def chat_completions_proxy(request: Request):
 
     # 5. Upstream Forwarding or High-Speed Mock Simulation
     # Check if a real OpenAI key was supplied
-    is_mock = not openai_key or openai_key.startswith("mock-") or openai_key.startswith("test-") or openai_key == "dev-admin-key"
+    is_mock = not openai_key or openai_key.startswith("mock-") or openai_key.startswith("test-")
 
     if is_mock:
         # Simulate an instant, realistic OpenAI completion response (Zero Cost Testing Mode)

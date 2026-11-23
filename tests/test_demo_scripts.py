@@ -9,9 +9,9 @@ from examples.demo_stuck_loop_with_recovery import main as run_stuck_loop_demo
 from examples.demo_multi_agent_fleet import main as run_fleet_demo
 
 def test_reseed_script_execution():
-    """Verify that reseed_demo_data resets and populates realistic demo entities."""
+    """Verify that reseed_demo_data resets and populates realistic demo entities when confirmed."""
     init_db()
-    reseed()
+    reseed(confirm_destroy=True)
     
     runs = get_all_runs()
     assert len(runs) >= 9
@@ -35,6 +35,17 @@ def test_reseed_script_execution():
     # Check Audit Export records
     export_records = get_audit_export_records(org_id="default_org")
     assert len(export_records) >= 4
+
+def test_reseed_refuses_without_confirm_destroy():
+    """Verify that reseed_demo_data rejects execution without explicit confirmation flag."""
+    with pytest.raises(ValueError, match="--confirm-destroy"):
+        reseed(confirm_destroy=False)
+
+def test_reseed_refuses_in_production(monkeypatch):
+    """Verify that reseed_demo_data strictly refuses to run in production environments."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    with pytest.raises(RuntimeError, match="ENVIRONMENT=development"):
+        reseed(confirm_destroy=True)
 
 def test_demo_budget_overrun_lifecycle():
     """Verify budget overrun demo executes end-to-end and triggers BUDGET_EXCEEDED incident."""

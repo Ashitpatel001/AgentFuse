@@ -24,10 +24,10 @@ run_id = str(uuid.uuid4())
 print(f"Starting HEALTHY agent run: {run_id}")
 
 adapter = LangGraphAdapter(agent_id="healthy_agent")
-cortex = AgentFuse(adapter=adapter)
+af = AgentFuse(adapter=adapter)
 
 builder = StateGraph(AgentState)
-builder.add_node("safety_gate", cortex.safety_gate)
+builder.add_node("safety_gate", af.safety_gate)
 builder.add_node("tool_node", dummy_tool_node)
 
 builder.set_entry_point("safety_gate")
@@ -36,7 +36,7 @@ builder.add_conditional_edges("tool_node", should_continue)
 
 graph = builder.compile()
 
-config = {"configurable": {"thread_id": run_id}, "callbacks": [cortex.telemetry]}
+config = {"configurable": {"thread_id": run_id}, "callbacks": [af.telemetry]}
 graph.invoke({"count": 0}, config=config)
 
 print("Waiting for telemetry queue to drain...")

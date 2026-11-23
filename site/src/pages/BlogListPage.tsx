@@ -46,7 +46,7 @@ export function BlogListPage() {
           return (
             <article
               key={post.slug}
-              className="p-8 bg-white border border-slate-200 rounded-2xl shadow-xs hover:shadow-md hover:border-blue-300 transition-all group"
+              className="p-8 bg-white border border-slate-200 rounded-xl hover:border-slate-400 transition-all group"
             >
               <div className="flex items-center gap-4 text-xs text-slate-500 font-mono mb-4">
                 <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-semibold uppercase">

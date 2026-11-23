@@ -37,7 +37,7 @@ def main():
     agent_id = "support_ticket_router"
 
     adapter = LangGraphAdapter(agent_id=agent_id)
-    cortex = AgentFuse(adapter=adapter)
+    af = AgentFuse(adapter=adapter)
 
     # Initial start event
     collector.ingest_event(RuntimeEvent(
@@ -100,7 +100,7 @@ def main():
         return "safety_gate"
 
     builder = StateGraph(SupportAgentState)
-    builder.add_node("safety_gate", cortex.safety_gate)
+    builder.add_node("safety_gate", af.safety_gate)
     builder.add_node("crm_node", fetch_ticket_record_node)
     builder.set_entry_point("safety_gate")
     builder.add_edge("safety_gate", "crm_node")

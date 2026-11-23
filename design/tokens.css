@@ -1,0 +1,171 @@
+/**
+ * AgentFuse Design Tokens
+ * Single source of truth for both Dashboard (Dark) and Marketing Site (Light)
+ */
+
+:root {
+  /* Typography */
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Type Scale */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --text-2xl: 40px;
+  --text-h1: 60px; /* 56-64px for site H1 */
+
+  /* Spacing Grid (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Heights & Dimensions */
+  --row-height: 36px;
+  --control-height: 32px;
+  --control-height-lg: 36px;
+
+  /* Border Radius: 6px controls, 8px panels, never above 12px */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --radius-max: 12px;
+
+  /* Motion: 120-200ms, respect prefers-reduced-motion */
+  --duration-fast: 120ms;
+  --duration-base: 150ms;
+  --duration-slow: 200ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Brand: ONLY for logomark, focus ring, text selection; NEVER for status */
+  --brand: #FF5A1F;
+  --brand-focus: #FF5A1F;
+  --brand-selection: rgba(255, 90, 31, 0.20);
+
+  /* Semantic Status Colors (Used consistently across dark and light) */
+  --critical: #F0524F;
+  --critical-surface: rgba(240, 82, 79, 0.12);
+  --critical-border: rgba(240, 82, 79, 0.28);
+
+  --warning: #E5A23C;
+  --warning-surface: rgba(229, 162, 60, 0.12);
+  --warning-border: rgba(229, 162, 60, 0.28);
+
+  --ok: #3FB68B;
+  --ok-surface: rgba(63, 182, 139, 0.12);
+  --ok-border: rgba(63, 182, 139, 0.28);
+
+  --info: #5B8DEF;
+  --info-surface: rgba(91, 141, 239, 0.12);
+  --info-border: rgba(91, 141, 239, 0.28);
+}
+
+/* ==========================================================================
+   Dashboard Palette (Dark only, no theme toggle)
+   ========================================================================== */
+:root,
+[data-theme="dark"],
+.theme-dark {
+  --bg: #0B0C0E;
+  --surface-1: #101216;
+  --surface-2: #15181D;
+  --surface-3: #1B1F26;
+
+  --border: #23272F;
+  --border-strong: #2F343E;
+
+  --text: #E7E9EE;
+  --muted: #9AA1AE;
+  --faint: #6B7280;
+
+  /* Buttons */
+  --btn-primary-bg: #F0F2F5;
+  --btn-primary-text: #0B0C0E;
+  --btn-primary-hover: #FFFFFF;
+
+  --btn-secondary-bg: #15181D;
+  --btn-secondary-border: #23272F;
+  --btn-secondary-text: #E7E9EE;
+  --btn-secondary-hover: #1B1F26;
+
+  --btn-danger-bg: rgba(240, 82, 79, 0.14);
+  --btn-danger-border: rgba(240, 82, 79, 0.35);
+  --btn-danger-text: #F0524F;
+  --btn-danger-hover: rgba(240, 82, 79, 0.24);
+
+  --btn-ghost-text: #9AA1AE;
+  --btn-ghost-hover-bg: #15181D;
+  --btn-ghost-hover-text: #E7E9EE;
+
+  /* Overlays & Popovers */
+  --shadow-dialog: 0 16px 36px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px #2F343E;
+  --shadow-popover: 0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 0 0 1px #23272F;
+}
+
+/* ==========================================================================
+   Marketing Site Palette (Light)
+   ========================================================================== */
+[data-theme="light"],
+.theme-light {
+  --bg: #FAFAF8;
+  --surface-1: #FFFFFF;
+  --surface-2: #F5F4F0;
+  --surface-3: #EFECE6;
+
+  --border: #E7E5E0;
+  --border-strong: #D6D3CC;
+
+  --text: #111113;
+  --muted: #5E6168;
+  --faint: #8E929B;
+
+  /* Buttons: near-black on white */
+  --btn-primary-bg: #111113;
+  --btn-primary-text: #FAFAF8;
+  --btn-primary-hover: #222226;
+
+  --btn-secondary-bg: #FFFFFF;
+  --btn-secondary-border: #E7E5E0;
+  --btn-secondary-text: #111113;
+  --btn-secondary-hover: #F5F4F0;
+
+  --btn-danger-bg: rgba(240, 82, 79, 0.08);
+  --btn-danger-border: rgba(240, 82, 79, 0.24);
+  --btn-danger-text: #D63936;
+  --btn-danger-hover: rgba(240, 82, 79, 0.16);
+
+  --btn-ghost-text: #5E6168;
+  --btn-ghost-hover-bg: #F5F4F0;
+  --btn-ghost-hover-text: #111113;
+
+  --shadow-dialog: 0 16px 36px -8px rgba(0, 0, 0, 0.10), 0 0 0 1px #E7E5E0;
+  --shadow-popover: 0 8px 24px -4px rgba(0, 0, 0, 0.06), 0 0 0 1px #E7E5E0;
+}
+
+/* ==========================================================================
+   Base Accessibility & Global Resets
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Tabular figures on all numbers */
+.tabular-nums,
+[data-tabular="true"] {
+  font-variant-numeric: tabular-nums;
+}

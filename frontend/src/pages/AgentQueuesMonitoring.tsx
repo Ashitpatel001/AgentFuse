@@ -258,7 +258,7 @@ export function AgentQueuesMonitoring() {
         <div className="bg-bg-raised border border-border-subtle p-4 rounded-xl">
           <div className="flex items-center justify-between text-text-muted text-[11px] font-mono">
             <span>THROUGHPUT</span>
-            <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
+            <TrendingUp className="w-3.5 h-3.5 text-accent" />
           </div>
           <div className="text-2xl font-extrabold text-text-primary mt-2 tracking-tight">
             {(metrics?.runs_monitored || mappedTasks.length * 4)} <span className="text-xs text-text-muted font-normal">tasks/m</span>
@@ -310,7 +310,7 @@ export function AgentQueuesMonitoring() {
 
       {/* ─── Datadog Watchdog Anomaly Detector Feed ─── */}
       {openIncidents.length > 0 && (
-        <div className="bg-amber-950/20 border border-amber-700/40 rounded-2xl p-5 space-y-3">
+        <div className="bg-amber-950/20 border border-amber-700/40 rounded-xl p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
@@ -364,7 +364,7 @@ export function AgentQueuesMonitoring() {
       {/* ─── Cumulative Trends & Visualizer (PostHog style SVG Charts) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Throughput & Queue Depth Trend */}
-        <div className="lg:col-span-2 bg-bg-raised border border-border-subtle rounded-2xl p-5 space-y-4">
+        <div className="lg:col-span-2 bg-bg-raised border border-border-subtle rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-text-secondary flex items-center gap-2">
@@ -388,17 +388,6 @@ export function AgentQueuesMonitoring() {
           {/* SVG Multi-Metric Area/Bar Chart */}
           <div className="h-44 w-full relative pt-2">
             <svg className="w-full h-full overflow-visible" viewBox="0 0 600 120" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                </linearGradient>
-                <linearGradient id="amberGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-
               {/* Grid lines */}
               <line x1="0" y1="30" x2="600" y2="30" stroke="#27272a" strokeDasharray="3 3" />
               <line x1="0" y1="65" x2="600" y2="65" stroke="#27272a" strokeDasharray="3 3" />
@@ -407,7 +396,7 @@ export function AgentQueuesMonitoring() {
               {/* Blue Area Curve (Tasks Throughput) */}
               <path
                 d="M 0,90 Q 50,45 100,55 T 200,35 T 300,50 T 400,25 T 500,40 T 600,20 L 600,120 L 0,120 Z"
-                fill="url(#blueGradient)"
+                fill="rgba(59, 130, 246, 0.15)"
               />
               <path
                 d="M 0,90 Q 50,45 100,55 T 200,35 T 300,50 T 400,25 T 500,40 T 600,20"
@@ -419,7 +408,7 @@ export function AgentQueuesMonitoring() {
               {/* Amber Curve (Anomaly Trips) */}
               <path
                 d="M 0,115 Q 100,115 150,110 T 250,85 T 350,110 T 450,90 T 550,112 T 600,105 L 600,120 L 0,120 Z"
-                fill="url(#amberGradient)"
+                fill="rgba(245, 158, 11, 0.15)"
               />
               <path
                 d="M 0,115 Q 100,115 150,110 T 250,85 T 350,110 T 450,90 T 550,112 T 600,105"
@@ -445,7 +434,7 @@ export function AgentQueuesMonitoring() {
         </div>
 
         {/* Failure Type & Anomaly Distribution */}
-        <div className="bg-bg-raised border border-border-subtle rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div className="bg-bg-raised border border-border-subtle rounded-xl p-5 flex flex-col justify-between space-y-4">
           <div>
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-text-secondary flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-400" />
@@ -483,7 +472,7 @@ export function AgentQueuesMonitoring() {
                 <span className="text-text-primary font-bold">0%</span>
               </div>
               <div className="h-2 rounded-full bg-bg-overlay overflow-hidden">
-                <div className="h-full bg-indigo-400 rounded-full" style={{ width: "0%" }} />
+                <div className="h-full bg-text-muted rounded-full" style={{ width: "0%" }} />
               </div>
             </div>
           </div>
@@ -527,7 +516,7 @@ export function AgentQueuesMonitoring() {
         </div>
 
         {/* Task Queue Table */}
-        <div className="bg-bg-raised border border-border-subtle rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-bg-raised border border-border-subtle rounded-xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs divide-y divide-border-subtle">
               <thead className="bg-bg-elevated/60 text-[10px] font-mono text-text-muted uppercase tracking-wider">
@@ -692,7 +681,7 @@ export function AgentQueuesMonitoring() {
 
       {/* ─── Datadog APM / PostHog Session Trace Inspector Drawer ─── */}
       {selectedRunId && selectedTask && (
-        <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-bg-base border-l border-border-default shadow-2xl z-50 p-6 flex flex-col justify-between overflow-y-auto animate-fade-in">
+        <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-bg-base border-l border-border-default shadow-lg z-50 p-6 flex flex-col justify-between overflow-y-auto animate-fade-in">
           <div className="space-y-6">
             {/* Drawer Header */}
             <div className="flex items-start justify-between pb-4 border-b border-border-subtle">

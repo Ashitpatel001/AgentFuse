@@ -33,7 +33,7 @@ def setup_teardown():
         conn.commit()
 
 def seed_fleet_and_patterns(org_id: str) -> str:
-    raw_key = f"ctx_viewer_{org_id}_fleet"
+    raw_key = f"af_live_viewer_{org_id}_fleet"
     k_hash = hash_key(raw_key)
     prefix = raw_key[:16] + "..."
     
@@ -95,3 +95,72 @@ def test_fleet_and_patterns_org_isolation():
     assert len(patterns_b) == 1
     assert "fingerprint_org_a" in patterns_a[0]["fingerprint"]
     assert "fingerprint_org_b" in patterns_b[0]["fingerprint"]
+
+
+def test_fleet_framework_and_spend_with_over_60_runs():
+    """Verify >60 runs aggregate framework and total_cost in single SQL query org-scoped."""
+    org_id = "org_scale_test"
+    raw_key = f"af_live_viewer_{org_id}_scale"
+    k_hash = hash_key(raw_key)
+    prefix = raw_key[:16] + "..."
+
+    # Create 65 distinct runs (across 20 agents)
+    frameworks = ["langgraph", "autogen", "crewai", "custom"]
+    run_count = 65
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('''
+                INSERT INTO api_keys (key_id, key_hash, key_prefix, name, org_id, role, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (str(uuid.uuid4()), k_hash, prefix, f"{org_id} Key", org_id, "VIEWER", datetime.now(timezone.utc)))
+
+            for i in range(run_count):
+                agent_idx = i % 20
+                agent_id = f"agent_worker_{agent_idx:02d}"
+                run_id = f"run_scale_{i:04d}"
+                framework = frameworks[i % len(frameworks)]
+                cost = round(0.12 * (i + 1), 4)
+
+                cur.execute('''
+                    INSERT INTO runs (run_id, agent_id, status, start_time, end_time, org_id, framework, total_cost)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (
+                    run_id, agent_id, "running" if i % 2 == 0 else "completed",
+                    datetime.now(timezone.utc), datetime.now(timezone.utc),
+                    org_id, framework, cost
+                ))
+
+            # Also seed 5 runs in a different org to prove org scoping
+            for j in range(5):
+                cur.execute('''
+                    INSERT INTO runs (run_id, agent_id, status, start_time, end_time, org_id, framework, total_cost)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (
+                    f"run_other_{j}", f"agent_other_{j}", "completed",
+                    datetime.now(timezone.utc), datetime.now(timezone.utc),
+                    "other_org", "other_fw", 99.99
+                ))
+
+        conn.commit()
+
+    res = client.get("/api/fleet", headers={"X-API-Key": raw_key})
+    assert res.status_code == 200
+    fleet = res.json()
+
+    # We expect 20 distinct agents
+    assert len(fleet) == 20
+    assert run_count > 60
+
+    for row in fleet:
+        assert "framework" in row, f"Missing framework in row {row}"
+        assert isinstance(row["framework"], str)
+        assert row["framework"] in frameworks
+
+        assert "total_cost" in row, f"Missing total_cost in row {row}"
+        assert isinstance(row["total_cost"], (int, float))
+        assert row["total_cost"] > 0
+
+        # No other org data leaked
+        assert not row["agent_id"].startswith("agent_other")
+

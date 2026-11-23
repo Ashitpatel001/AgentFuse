@@ -58,7 +58,7 @@ def seed_org(org_id: str, role: str = "OPERATOR") -> dict:
     Seed one org with an API key (of `role`), one run, one incident, and one
     recovery plan linked to them. Returns the raw key and the resource ids.
     """
-    raw_key = f"ctx_{role.lower()}_{org_id}_{uuid.uuid4().hex[:6]}"
+    raw_key = f"af_live_{role.lower()}_{org_id}_{uuid.uuid4().hex[:6]}"
     k_hash = hash_key(raw_key)
     prefix = raw_key[:16] + "..."
     run_id = f"test_run_{org_id}_{uuid.uuid4().hex[:8]}"
