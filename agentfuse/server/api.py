@@ -30,6 +30,7 @@ from agentfuse.models.auth import (
 from agentfuse.storage import auth_store
 from agentfuse.models.alerting import WebhookConfig, WebhookCreateRequest, NotificationRecord
 from agentfuse.alerting.dispatcher import alert_dispatcher
+from agentfuse.alerting.security import validate_webhook_url, SSRFValidationError
 from agentfuse.protection.controller import ProtectionController
 from agentfuse.recovery.engine import RecoveryEngine
 from agentfuse.learning.trust import TrustEngine
@@ -136,7 +137,13 @@ async def lifespan(app: FastAPI):
     escalation_task.cancel()
     await sse_bus.stop()
 
-app = FastAPI(title="AgentFuse Control Plane", lifespan=lifespan)
+app = FastAPI(
+    title="AgentFuse Control Plane",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 # --- PROMETHEUS METRICS ---
 metrics_app = make_asgi_app()
@@ -246,6 +253,7 @@ class User:
         self.auth = auth  # "api_key" | "session"
 
 def get_current_user(
+    request: Request,
     api_key: str = Security(api_key_header),
     session_token: str = Cookie(default=None, alias=SESSION_COOKIE_NAME),
 ):
@@ -280,6 +288,11 @@ def get_current_user(
 
     # --- Plane 2: human auth (dashboard session cookie) ---
     if session_token:
+        # CSRF defense: cookie-authenticated state-mutating requests require X-Requested-With
+        if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+            if not request.headers.get("x-requested-with"):
+                raise HTTPException(status_code=403, detail="CSRF check failed: X-Requested-With header required")
+
         row = auth_store.resolve_session(session_token)
         if row:
             return User(username=row["email"], role=row["role"], org_id=row["org_id"],
@@ -319,7 +332,7 @@ app.add_middleware(
     allow_origins=_cors_origins,
     allow_credentials=True,  # session cookie auth for the dashboard (ADR-005)
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["X-API-Key", "Content-Type"],
+    allow_headers=["X-API-Key", "Content-Type", "X-Requested-With"],
 )
 
 # ==========================================================================
@@ -327,6 +340,79 @@ app.add_middleware(
 # Machine auth (X-API-Key) is unchanged; both planes share the same RBAC.
 # ==========================================================================
 _COOKIE_SECURE = settings.ENVIRONMENT == "production"
+
+LOGIN_LOCKOUT_MAX_ATTEMPTS = 5
+LOGIN_LOCKOUT_WINDOW_SECONDS = 900  # 15 minutes
+_LOGIN_FAILURE_STORE = {}
+
+
+def _get_lockout_bucket(email: str, request: Request) -> str:
+    ip = request.client.host if request.client else "127.0.0.1"
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
+    return f"{email.lower().strip()}:{ip}"
+
+
+def _check_login_lockout(bucket: str) -> None:
+    now = time.time()
+    r = _rl_get_redis()
+    if r is not None:
+        key = f"agentfuse:lockout:{bucket}"
+        try:
+            r.zremrangebyscore(key, 0, now - LOGIN_LOCKOUT_WINDOW_SECONDS)
+            count = r.zcard(key)
+            if count >= LOGIN_LOCKOUT_MAX_ATTEMPTS:
+                oldest = r.zrange(key, 0, 0, withscores=True)
+                retry_after = max(1, int(LOGIN_LOCKOUT_WINDOW_SECONDS - (now - oldest[0][1]))) if oldest else LOGIN_LOCKOUT_WINDOW_SECONDS
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many failed login attempts. Account temporarily locked.",
+                    headers={"Retry-After": str(retry_after)}
+                )
+            return
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Lockout redis error, falling back to memory: {e}")
+
+    attempts = [t for t in _LOGIN_FAILURE_STORE.get(bucket, []) if now - t < LOGIN_LOCKOUT_WINDOW_SECONDS]
+    _LOGIN_FAILURE_STORE[bucket] = attempts
+    if len(attempts) >= LOGIN_LOCKOUT_MAX_ATTEMPTS:
+        retry_after = max(1, int(LOGIN_LOCKOUT_WINDOW_SECONDS - (now - attempts[0])))
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts. Account temporarily locked.",
+            headers={"Retry-After": str(retry_after)}
+        )
+
+
+def _record_login_failure(bucket: str) -> None:
+    now = time.time()
+    r = _rl_get_redis()
+    if r is not None:
+        key = f"agentfuse:lockout:{bucket}"
+        try:
+            r.zadd(key, {str(now): now})
+            r.expire(key, LOGIN_LOCKOUT_WINDOW_SECONDS)
+            return
+        except Exception as e:
+            logger.warning(f"Lockout redis error on record: {e}")
+
+    attempts = [t for t in _LOGIN_FAILURE_STORE.get(bucket, []) if now - t < LOGIN_LOCKOUT_WINDOW_SECONDS]
+    attempts.append(now)
+    _LOGIN_FAILURE_STORE[bucket] = attempts
+
+
+def _clear_login_lockout(bucket: str) -> None:
+    r = _rl_get_redis()
+    if r is not None:
+        key = f"agentfuse:lockout:{bucket}"
+        try:
+            r.delete(key)
+        except Exception:
+            pass
+    _LOGIN_FAILURE_STORE.pop(bucket, None)
 
 
 def _set_session_cookie(response: Response, raw_token: str):
@@ -338,13 +424,19 @@ def _set_session_cookie(response: Response, raw_token: str):
 
 
 @app.post("/api/auth/login", response_model=AuthUserResponse)
-def api_login(payload: LoginRequest, response: Response):
+def api_login(payload: LoginRequest, request: Request, response: Response):
+    bucket = _get_lockout_bucket(payload.email, request)
+    _check_login_lockout(bucket)
+
     user = auth_store.get_user_by_email(payload.email)
     # Uniform error whether the email is unknown, disabled, or the password is
     # wrong — do not leak which accounts exist.
     if (not user or user.status != "ACTIVE"
             or not verify_password(user.password_hash, payload.password)):
+        _record_login_failure(bucket)
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    _clear_login_lockout(bucket)
     raw = auth_store.create_session_for_user(user.user_id)
     auth_store.update_user_last_login(user.user_id)
     _set_session_cookie(response, raw)
@@ -354,6 +446,7 @@ def api_login(payload: LoginRequest, response: Response):
 
 @app.post("/api/auth/logout")
 def api_logout(response: Response,
+               user: User = Depends(get_current_user),
                session_token: str = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
     if session_token:
         auth_store.revoke_session(session_token)
@@ -492,6 +585,11 @@ def api_create_webhook(
     user: User = Depends(require_admin)
 ):
     """Register a new outbound alerting webhook for caller's organization. ADMIN only."""
+    try:
+        validate_webhook_url(str(payload.url))
+    except SSRFValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     config = WebhookConfig(
         org_id=user.org_id,
         target_type=payload.target_type,

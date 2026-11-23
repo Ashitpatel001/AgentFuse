@@ -19,6 +19,7 @@ from agentfuse.storage.postgres import (
 )
 
 from concurrent.futures import ThreadPoolExecutor
+from agentfuse.alerting.security import validate_webhook_url, SSRFValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +118,29 @@ class AlertDispatcher:
         status_code = None
         response_body = None
 
+        # Validate URL against SSRF before send
         try:
-            with httpx.Client(timeout=5.0) as client:
+            validate_webhook_url(config.url)
+        except SSRFValidationError as e:
+            logger.warning(f"Blocked SSRF dispatch to {config.url}: {e}")
+            notification = NotificationRecord(
+                notification_id=str(uuid.uuid4()),
+                org_id=config.org_id,
+                incident_id=incident.incident_id,
+                run_id=incident.run_id,
+                notification_type="ESCALATION" if is_escalation else "INITIAL_ALERT",
+                target_url=config.url,
+                payload=payload,
+                status="FAILED",
+                status_code=None,
+                response_body=f"SSRF validation blocked: {e}",
+                sent_at=datetime.now(timezone.utc)
+            )
+            save_notification_record(notification)
+            return notification
+
+        try:
+            with httpx.Client(timeout=5.0, follow_redirects=False) as client:
                 res = client.post(config.url, json=payload, headers=headers)
                 status_code = res.status_code
                 response_body = res.text[:500]

@@ -30,6 +30,9 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     headers.set("X-API-Key", key);
   }
 
+  // Attach X-Requested-With for CSRF defense on cookie-authenticated requests
+  headers.set("X-Requested-With", "XMLHttpRequest");
+
   const response = await fetch(endpoint, {
     ...options,
     headers,

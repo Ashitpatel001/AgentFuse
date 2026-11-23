@@ -4,5 +4,6 @@ Alerting and escalation subsystem for dispatching real-time notifications
 """
 
 from agentfuse.alerting.dispatcher import AlertDispatcher
+from agentfuse.alerting.security import validate_webhook_url, SSRFValidationError
 
-__all__ = ["AlertDispatcher"]
+__all__ = ["AlertDispatcher", "validate_webhook_url", "SSRFValidationError"]
