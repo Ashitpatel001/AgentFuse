@@ -66,8 +66,69 @@ async function run() {
   assert.notStrictEqual(dialog, null, 'Approve dialog SHOULD open when "a" is pressed outside text field.');
   console.log('[PASS] Focus outside input: pressing "a" successfully opens approve dialog.');
 
-  // Clean up dialog with Escape
+  // Test 3: With dialog open, verify j/k/a/x/c are completely ignored
+  console.log('Testing shortcuts suppression while dialog is open...');
+  const initialUrl = page.url();
+
+  // Try pressing 'j' (move down) while dialog is open
+  await page.keyboard.press('j');
+  await page.waitForTimeout(200);
+  assert.strictEqual(page.url(), initialUrl, 'Pressing "j" with dialog open must NOT change incident selection URL!');
+
+  // Try pressing 'k' (move up) while dialog is open
+  await page.keyboard.press('k');
+  await page.waitForTimeout(200);
+  assert.strictEqual(page.url(), initialUrl, 'Pressing "k" with dialog open must NOT change incident selection URL!');
+
+  // Try pressing 'x' (reject) while approve dialog is open
+  await page.keyboard.press('x');
+  await page.waitForTimeout(200);
+  const dialogs = await page.$$('[role="dialog"]');
+  assert.strictEqual(dialogs.length, 1, 'Pressing "x" while dialog is open must not spawn secondary dialog!');
+
+  // Try pressing 'a' again while dialog is open
+  await page.keyboard.press('a');
+  await page.waitForTimeout(200);
+  const dialogsAfterA = await page.$$('[role="dialog"]');
+  assert.strictEqual(dialogsAfterA.length, 1, 'Pressing "a" while dialog is open must not spawn duplicate dialog!');
+
+  // Try pressing 'c' (copy AI context) while dialog is open
+  await page.keyboard.press('c');
+  await page.waitForTimeout(200);
+
+  console.log('[PASS] With approve dialog open: j/k/a/x/c shortcuts were strictly ignored.');
+
+  // Close dialog with Escape
   await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  dialog = await page.$('[role="dialog"]');
+  assert.strictEqual(dialog, null, 'Dialog should close after pressing Escape.');
+
+  // Test 4: Open Shortcuts Dialog with '?' and test j/k/a/x/c
+  await page.keyboard.press('?');
+  await page.waitForTimeout(400);
+  const helpDialog = await page.$('[role="dialog"]');
+  assert.notStrictEqual(helpDialog, null, 'Pressing "?" should open Shortcuts dialog.');
+
+  await page.keyboard.press('j');
+  await page.waitForTimeout(150);
+  assert.strictEqual(page.url(), initialUrl, 'Pressing "j" with help dialog open must not change selection.');
+
+  await page.keyboard.press('k');
+  await page.waitForTimeout(150);
+  assert.strictEqual(page.url(), initialUrl, 'Pressing "k" with help dialog open must not change selection.');
+
+  await page.keyboard.press('a');
+  await page.waitForTimeout(150);
+  assert.strictEqual((await page.$$('[role="dialog"]')).length, 1, 'Pressing "a" with help dialog open must not open approve dialog.');
+
+  await page.keyboard.press('x');
+  await page.waitForTimeout(150);
+  assert.strictEqual((await page.$$('[role="dialog"]')).length, 1, 'Pressing "x" with help dialog open must not open reject dialog.');
+
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  console.log('[PASS] With shortcuts dialog open: j/k/a/x/c shortcuts were strictly ignored.');
 
   await browser.close();
   console.log('--- ALL PLAYWRIGHT SHORTCUTS TESTS PASSED ---');

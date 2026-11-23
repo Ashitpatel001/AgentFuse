@@ -256,36 +256,34 @@ graph TB
 
 ---
 
-### 1. Clone and Launch Infrastructure
+### 1. Clone and Run with Docker Compose
+
+Run the entire self-hosted stack—including PostgreSQL 15, Redis 7, the API Control Plane, and the pre-compiled frontend dashboard (via multi-stage build)—with a single command:
 
 ```bash
 # Clone the repository
 git clone https://github.com/Ashitpatel001/AgentFuse.git
 cd AgentFuse
 
-# Create and activate Python virtual environment
-python -m venv .venv
-
-# Linux / macOS:
-source .venv/bin/activate
-
-# Windows (PowerShell):
-.\.venv\Scripts\Activate.ps1
-
-# Install AgentFuse in editable mode with all extras
-pip install -e ".[all,dev]"
-
-# Start PostgreSQL 15 & Redis 7 containers in the background
+# Launch full stack (Postgres 15, Redis 7, API Control Plane, and Dashboard)
 docker compose up -d
 ```
 
-### 2. Start the Control Plane Server
+### 2. (Optional) Local Python Development
+
+If running the Python package locally instead of Docker:
 
 ```bash
-# Initialize database schema and run baseline migrations
-agentfuse init --skip-docker
+python -m venv .venv
+# Linux / macOS:
+source .venv/bin/activate
+# Windows:
+.\.venv\Scripts\Activate.ps1
 
-# Start the AgentFuse Control Plane API & Dashboard server
+pip install -e ".[all,dev]"
+
+# Build dashboard static assets or run via Docker
+cd frontend && npm ci && npm run build && cd ..
 agentfuse start --port 8000
 ```
 

@@ -29,10 +29,11 @@ def init_pool():
         #   replicas * max_conn < postgres max_connections - reserved
         min_conn = settings.DB_POOL_MIN
         max_conn = settings.DB_POOL_SIZE + settings.DB_MAX_OVERFLOW
+        db_url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL
         _pool = psycopg2.pool.ThreadedConnectionPool(
             min_conn,
             max_conn,
-            settings.DATABASE_URL
+            db_url
         )
         logger.info(f"Initialized PostgreSQL ThreadedConnectionPool (min={min_conn}, max={max_conn})")
 
@@ -82,7 +83,8 @@ def init_db():
         return
     from yoyo import read_migrations, get_backend
     migrations_dir = os.environ.get("AGENTFUSE_MIGRATIONS_DIR", _MIGRATIONS_DIR)
-    backend = get_backend(settings.DATABASE_URL)
+    db_url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL
+    backend = get_backend(db_url)
     migrations = read_migrations(migrations_dir)
     with backend.lock():
         backend.apply_migrations(backend.to_apply(migrations))

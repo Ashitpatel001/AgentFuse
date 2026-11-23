@@ -238,6 +238,13 @@ def init(skip_docker, db_url):
 def start(port, host, use_reload, workers):
     """Start the AgentFuse backend server."""
 
+    static_index = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "server", "static", "index.html"))
+    if not os.path.isfile(static_index):
+        click.secho(
+            "Dashboard not built. Use Docker, or run npm ci && npm run build in frontend/",
+            fg="yellow",
+        )
+
     click.secho("\n  Starting AgentFuse server on http://{}:{} ...\n".format(host, port), fg="cyan")
 
     import uvicorn
