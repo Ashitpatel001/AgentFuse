@@ -69,6 +69,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       # Set workers to 1: gateway state and cost tracking are currently in-process.
       AGENTFUSE_WORKERS: 1
+    # Run uvicorn with proxy headers enabled, trusting reverse proxy (Caddy).
+    # Enables uvicorn to populate request.client.host from X-Forwarded-For;
+    # per-IP rate limits and login lockout depend on accurate client IP extraction.
+    command: ["sh", "-c", "exec uvicorn agentfuse.server.api:app --host 0.0.0.0 --port 8000 --workers ${AGENTFUSE_WORKERS:-1} --proxy-headers --forwarded-allow-ips='127.0.0.1,172.16.0.0/12'"]
     ports:
       - "127.0.0.1:8000:8000"
     networks:
