@@ -91,6 +91,10 @@ export default function ComparisonSection() {
             <strong className="text-[var(--text)] block mb-1">Single-worker state default</strong>
             Proxy state is in-process per worker by default. Redis pub/sub is recommended for horizontal scaling.
           </div>
+          <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-1)] border border-[var(--border)]">
+            <strong className="text-[var(--text)] block mb-1">Webhook DNS rebinding</strong>
+            Outbound webhooks resolve and validate all IP addresses at registration and dispatch, but socket pinning is not implemented.
+          </div>
         </div>
       </section>
     </>

@@ -196,6 +196,43 @@ def test_webhook_ssrf_blocked_cloud_metadata():
     assert "169.254.169.254" in res.json()["detail"]
 
 
+def test_webhook_ssrf_blocked_unspecified_0_0_0_0():
+    """Reject 0.0.0.0 unspecified address."""
+    with pytest.raises(SSRFValidationError, match="forbidden unspecified"):
+        validate_webhook_url("http://0.0.0.0:8080/hook", environment="development")
+
+
+def test_webhook_ssrf_blocked_mapped_ipv6():
+    """Reject IPv4-mapped IPv6 address pointing to loopback ::ffff:127.0.0.1."""
+    with pytest.raises(SSRFValidationError, match="forbidden loopback"):
+        validate_webhook_url("http://[::ffff:127.0.0.1]:8080/hook", environment="development")
+
+
+def test_webhook_ssrf_blocked_fc00_ula():
+    """Reject fc00::/7 Unique Local Address (ULA) IPv6 range."""
+    with pytest.raises(SSRFValidationError, match="forbidden private"):
+        validate_webhook_url("http://[fc00::1]:8080/hook", environment="development")
+
+
+def test_webhook_ssrf_blocked_cgnat_100_64():
+    """Reject 100.64.0.0/10 Carrier-grade NAT / shared address space."""
+    with pytest.raises(SSRFValidationError, match="100.64.0.0/10"):
+        validate_webhook_url("http://100.64.0.1:8080/hook", environment="development")
+
+
+def test_webhook_ssrf_blocked_decimal_encoded_ip():
+    """Reject decimal-encoded IPv4 representations (2130706433 == 127.0.0.1)."""
+    with pytest.raises(SSRFValidationError, match="forbidden loopback"):
+        validate_webhook_url("http://2130706433:8080/hook", environment="development")
+
+
+def test_webhook_ssrf_blocked_hostname_resolving_to_private():
+    """Reject benign-looking hostname that resolves to a private IP via DNS."""
+    with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("192.168.1.50", 0))]):
+        with pytest.raises(SSRFValidationError, match="forbidden private"):
+            validate_webhook_url("http://internal-host.corp/hook", environment="development")
+
+
 def test_webhook_ssrf_blocked_production_non_https():
     """When ENVIRONMENT=production, reject plain http URLs."""
     with pytest.raises(SSRFValidationError, match="must use HTTPS"):
