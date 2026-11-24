@@ -71,3 +71,4 @@ pg_data*/
 pw.txt
 *.key
 *.pem
+docs/lighthouse-mobile.json
