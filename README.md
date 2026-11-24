@@ -301,7 +301,7 @@ python examples/demo_proxy_gateway.py
 
 - **Real-Time APM Safety Console:** [`http://localhost:8000`](http://localhost:8000)
   - *Default Credentials:* `admin@agentfuse.com` / `admin123`
-- **Interactive Documentation:** [`http://localhost:8000/docs`](http://localhost:8000/docs)
+- **API Documentation:** [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md)
 - **Health Check:** [`http://localhost:8000/health`](http://localhost:8000/health)
 - **Prometheus Metrics:** [`http://localhost:8000/metrics`](http://localhost:8000/metrics)
 

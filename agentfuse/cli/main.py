@@ -218,11 +218,10 @@ def init(skip_docker, db_url):
     # --- 6. Summary ---------------------------------------------------------------
     port = int(os.environ.get("AGENTFUSE_PORT", "8000"))
     click.secho("  Setup complete. Next steps:", fg="cyan")
-    click.echo("    1. Start the server:      agentfuse start")
+    click.echo("    1. Start the server:       agentfuse start")
     click.echo("    2. Run a live demo:        agentfuse demo")
     click.echo("    3. Open the dashboard:     http://localhost:{}".format(port))
-    click.echo("    4. Open the API docs:      http://localhost:{}/docs".format(port))
-    click.echo("    5. Log in with your key:   {}...".format(raw_key[:20]))
+    click.echo("    4. Log in with your key:   {}...".format(raw_key[:20]))
     click.echo()
 
 
@@ -413,7 +412,6 @@ def status(port, as_json):
 
     click.echo("  Server:    http://127.0.0.1:{}".format(port))
     click.echo("  Dashboard: http://127.0.0.1:{}".format(port))
-    click.echo("  API Docs:  http://127.0.0.1:{}/docs".format(port))
     click.echo()
 
     if health_status == "UNREACHABLE":
